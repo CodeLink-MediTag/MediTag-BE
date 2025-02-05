@@ -10,22 +10,22 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
 
     private final LoginService loginService;
-    private final CustomUserDetailsService customUserDetailsService;
 
-    public AuthController(LoginService loginService, CustomUserDetailsService customUserDetailsService) {
+    public AuthController(LoginService loginService) {
         this.loginService = loginService;
-        this.customUserDetailsService = customUserDetailsService;
     }
 
     // 로그인
     @PostMapping("/login")
-    public ResponseEntity<TokenDTO> login(@RequestBody LoginDTO loginDTO) {
-
-        return ResponseEntity.ok(new TokenDTO());
+    public ResponseEntity<Map<String, TokenDTO>> login(@RequestBody LoginDTO loginDTO) {
+        TokenDTO tokenDTO = loginService.login(loginDTO);
+        return ResponseEntity.ok(Map.of("로그인 성공", tokenDTO));
     }
 }
