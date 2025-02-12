@@ -6,10 +6,11 @@ import lombok.RequiredArgsConstructor;
 @Getter
 @RequiredArgsConstructor
 public class ErrorResponse {
-    private final String errorClassName;
+
+    private final int status;
     private final String message;
 
-    public static ErrorResponse of(String errorClassName, String message) {
-        return new ErrorResponse(errorClassName, message);
+    public static ErrorResponse of(int status, String message) {
+        return new ErrorResponse(status, message);
     }
 }
