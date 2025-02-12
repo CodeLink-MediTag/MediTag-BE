@@ -1,6 +1,5 @@
 package com.example.meditag.global.jwt;
 
-import com.example.meditag.domain.member.entity.Member;
 import io.jsonwebtoken.Jwts;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;

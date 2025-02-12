@@ -61,7 +61,7 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter { // 로�
 
         } catch (IOException e) {
             log.error("Failed to parse authentication request", e);
-            throw new AuthenticationServiceException("Failed to parse authentication request", e);
+            throw new AuthenticationServiceException("로그인 입력을 읽는 도중 오류 발생: " + e.getMessage());
         }
     }
 
