@@ -13,6 +13,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.AuthenticationServiceException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
@@ -39,15 +40,29 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter { // 로�
 
     @Override
     public Authentication attemptAuthentication(HttpServletRequest request, HttpServletResponse response) throws AuthenticationException {
-        // 클라이언트 요청에서 username, password 추출
-        String username = obtainUsername(request);
-        String password = obtainPassword(request);
+        try {
+            // JSON 요청을 LoginDTO 객체로 변환
+            LoginDTO loginDTO = new ObjectMapper().readValue(request.getInputStream(), LoginDTO.class);
 
-        // UsernamePasswordAuthenticationToken을 생성하여 인증 매니저로 전달
-        UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(username, password, null);
+            // 로그 추가
+            log.info("Attempting authentication for username: {}", loginDTO.getUsername());
 
-        // 인증 매니저를 통해 인증 수행
-        return authenticationManager.authenticate(authToken);
+            // UsernamePasswordAuthenticationToken 생성
+            UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+                    loginDTO.getUsername(),
+                    loginDTO.getPassword()
+            );
+
+            // 추가 로깅
+            log.debug("Created authentication token for username: {}", loginDTO.getUsername());
+
+            // 인증 시도
+            return authenticationManager.authenticate(authToken);
+
+        } catch (IOException e) {
+            log.error("Failed to parse authentication request", e);
+            throw new AuthenticationServiceException("Failed to parse authentication request", e);
+        }
     }
 
     // 로그인 성공 시 실행되는 메서드 (JWT 발급)
