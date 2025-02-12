@@ -3,6 +3,7 @@ package com.example.meditag.global.jwt;
 import com.example.meditag.domain.auth.dto.request.CustomUserDetails;
 import com.example.meditag.domain.auth.dto.request.LoginDTO;
 import com.example.meditag.domain.auth.dto.response.TokenDTO;
+import com.example.meditag.global.error.ErrorResponse;
 import com.example.meditag.global.error.exception.CustomException;
 import com.example.meditag.global.error.exception.ErrorCode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -83,14 +84,21 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter { // 로�
         log.info("JWT token successfully generated and added to response header");
     }
 
-    // 로그인 실패 시 실행되는 메서드 (CustomAuthenticationEntryPoint 활용)
+    // 로그인 실패 시 실행되는 메서드
     @Override
-    protected void unsuccessfulAuthentication(HttpServletRequest request, HttpServletResponse response, AuthenticationException failed) throws IOException, ServletException {
+    protected void unsuccessfulAuthentication(HttpServletRequest request, HttpServletResponse response, AuthenticationException failed) throws IOException {
         log.error("Authentication failed: {}", failed.getMessage());
 
-        response.setStatus(401);
+        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        response.setContentType("application/json");
+        response.setCharacterEncoding("UTF-8");
 
-        // CustomAuthenticationEntryPoint를 사용하여 예외 처리
-//        authenticationEntryPoint.commence(request, response, failed);
+        ErrorCode errorCode = ErrorCode.AUTHENTICATION_FAILED; // 기본적으로 로그인 실패 오류 사용
+
+        // 오류 응답 생성
+        ErrorResponse errorResponse = new ErrorResponse(errorCode.getStatus().value(), errorCode.getMessage());
+
+        // JSON 응답 반환
+        new ObjectMapper().writeValue(response.getWriter(), errorResponse);
     }
 }
