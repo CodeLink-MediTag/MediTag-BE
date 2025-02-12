@@ -35,3 +35,7 @@ out/
 
 ### VS Code ###
 .vscode/
+
+# .env 파일을 git에서 무시하도록 설정
+.env
+
