@@ -3,6 +3,7 @@ package com.example.meditag.global.jwt;
 import com.example.meditag.domain.auth.dto.request.CustomUserDetails;
 import com.example.meditag.domain.auth.dto.request.LoginDTO;
 import com.example.meditag.domain.auth.dto.response.TokenDTO;
+import com.example.meditag.domain.member.entity.Member;
 import com.example.meditag.global.error.ErrorResponse;
 import com.example.meditag.global.error.exception.CustomException;
 import com.example.meditag.global.error.exception.ErrorCode;
