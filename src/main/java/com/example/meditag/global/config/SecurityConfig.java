@@ -2,6 +2,7 @@ package com.example.meditag.global.config;
 
 import com.example.meditag.domain.auth.service.LoginService;
 import com.example.meditag.domain.oauth2.dto.CustomOAuth2User;
+import com.example.meditag.domain.oauth2.hendler.CustomSuccessHandler;
 import com.example.meditag.domain.oauth2.service.CustomOAuth2UserService;
 import com.example.meditag.global.jwt.JWTFilter;
 import com.example.meditag.global.jwt.JWTUtil;
@@ -37,13 +38,16 @@ public class SecurityConfig {
 
     private final CustomOAuth2UserService customOAuth2UserService;
 
+    private final CustomSuccessHandler customSuccessHandler;
+
 
 
     // 🔹 생성자를 통해 AuthenticationConfiguration과 JWTUtil을 주입받음
-    public SecurityConfig(AuthenticationConfiguration authenticationConfiguration, JWTUtil jwtUtil, CustomOAuth2UserService customOAuth2UserService) {
+    public SecurityConfig(AuthenticationConfiguration authenticationConfiguration, JWTUtil jwtUtil, CustomOAuth2UserService customOAuth2UserService, CustomSuccessHandler customSuccessHandler) {
         this.authenticationConfiguration = authenticationConfiguration;
         this.jwtUtil = jwtUtil;
         this.customOAuth2UserService = customOAuth2UserService;
+        this.customSuccessHandler = customSuccessHandler;
     }
 
     // 🔹 AuthenticationManager를 Bean으로 등록
@@ -104,19 +108,21 @@ public class SecurityConfig {
         http.oauth2Login(oauth2 -> oauth2
                 .userInfoEndpoint(userInfo -> userInfo
                         .userService(customOAuth2UserService))
-                .successHandler((request, response, authentication) -> {
-                    // OAuth2 로그인 성공 시 JWT 토큰 발급
-                    CustomOAuth2User oAuth2User = (CustomOAuth2User) authentication.getPrincipal();
-                    String username = oAuth2User.getUsername();
-                    String role = oAuth2User.getAuthorities().stream()
-                            .findFirst()
-                            .map(GrantedAuthority::getAuthority)
-                            .orElse("ROLE_USER");
+                        .successHandler(customSuccessHandler)
 
-                    String token = jwtUtil.createJwt(username, role, 60 * 60 * 10L);
-                    response.addHeader("Authorization", "Bearer " + token);
-                    response.sendRedirect("/"); // 로그인 성공 후 리다이렉트
-                })
+//                .successHandler((request, response, authentication) -> {
+//                    // OAuth2 로그인 성공 시 JWT 토큰 발급
+//                    CustomOAuth2User oAuth2User = (CustomOAuth2User) authentication.getPrincipal();
+//                    String username = oAuth2User.getUsername();
+//                    String role = oAuth2User.getAuthorities().stream()
+//                            .findFirst()
+//                            .map(GrantedAuthority::getAuthority)
+//                            .orElse("ROLE_USER");
+//
+//                    String token = jwtUtil.createJwt(username, role, 60 * 60 * 10L);
+//                    response.addHeader("Authorization", "Bearer " + token);
+//                    response.sendRedirect("/"); // 로그인 성공 후 리다이렉트
+//                })
         );
 
 

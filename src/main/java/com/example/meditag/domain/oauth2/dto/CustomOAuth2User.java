@@ -43,7 +43,8 @@ public class CustomOAuth2User implements OAuth2User {
     }
     //임의의 유저 id 만들기
     public String getUsername() {
-        return oAuth2Response.getProvider()+" "+oAuth2Response.getProviderId();
+        return oAuth2Response.getEmail();
+//        return oAuth2Response.getProvider()+" "+oAuth2Response.getProviderId();
         //예 )naver + " " 123123123
     }
 
