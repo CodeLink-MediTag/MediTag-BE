@@ -1,6 +1,5 @@
-package com.example.meditag.domain.medicine.controller;
+package com.example.meditag.domain.medicine_calendar.controller;
 
-import com.example.meditag.domain.medicine.service.MedicineService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -8,7 +7,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping
-public class MedicineController {
+public class MedicineCalendarController {
 
-    private final MedicineService medicineService;
+    private final MedicineCalendarController medicineCalendarController;
 }
