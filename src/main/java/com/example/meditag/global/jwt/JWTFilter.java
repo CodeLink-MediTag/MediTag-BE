@@ -1,6 +1,6 @@
 package com.example.meditag.global.jwt;
 
-import com.example.meditag.domain.auth.dto.request.CustomUserDetails;
+import com.example.meditag.domain.auth.dto.CustomUserDetails;
 import com.example.meditag.domain.member.entity.Member;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;

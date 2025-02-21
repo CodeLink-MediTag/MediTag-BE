@@ -1,4 +1,4 @@
-package com.example.meditag.domain.auth.dto.request;
+package com.example.meditag.domain.auth.dto;
 
 import com.example.meditag.domain.member.entity.Member;
 import lombok.extern.slf4j.Slf4j;

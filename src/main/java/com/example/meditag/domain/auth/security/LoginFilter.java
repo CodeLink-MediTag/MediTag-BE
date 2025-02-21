@@ -1,10 +1,11 @@
-package com.example.meditag.global.jwt;
+package com.example.meditag.domain.auth.security;
 
-import com.example.meditag.domain.auth.dto.request.CustomUserDetails;
-import com.example.meditag.domain.auth.dto.request.LoginDTO;
-import com.example.meditag.domain.auth.dto.response.TokenDTO;
+import com.example.meditag.domain.auth.dto.CustomUserDetails;
+import com.example.meditag.domain.auth.dto.LoginDTO;
 import com.example.meditag.global.error.ErrorResponse;
 import com.example.meditag.global.error.exception.ErrorCode;
+import com.example.meditag.global.jwt.JWTUtil;
+import com.example.meditag.global.jwt.TokenDTO;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.http.HttpServletRequest;
