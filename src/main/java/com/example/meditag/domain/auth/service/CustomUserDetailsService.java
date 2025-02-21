@@ -1,6 +1,6 @@
 package com.example.meditag.domain.auth.service;
 
-import com.example.meditag.domain.auth.dto.request.CustomUserDetails;
+import com.example.meditag.domain.auth.dto.CustomUserDetails;
 import com.example.meditag.domain.member.entity.Member;
 import com.example.meditag.domain.member.repository.MemberRepository;
 import com.example.meditag.global.error.exception.CustomException;

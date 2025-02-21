@@ -4,7 +4,7 @@ import com.example.meditag.domain.oauth2.hendler.CustomSuccessHandler;
 import com.example.meditag.domain.oauth2.service.CustomOAuth2UserService;
 import com.example.meditag.global.jwt.JWTFilter;
 import com.example.meditag.global.jwt.JWTUtil;
-import com.example.meditag.global.jwt.LoginFilter;
+import com.example.meditag.domain.auth.security.LoginFilter;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -104,29 +104,15 @@ public class SecurityConfig {
         http.oauth2Login(oauth2 -> oauth2
                 .userInfoEndpoint(userInfo -> userInfo
                         .userService(customOAuth2UserService))
-                        .successHandler(customSuccessHandler)
-
-//                .successHandler((request, response, authentication) -> {
-//                    // OAuth2 로그인 성공 시 JWT 토큰 발급
-//                    CustomOAuth2User oAuth2User = (CustomOAuth2User) authentication.getPrincipal();
-//                    String username = oAuth2User.getUsername();
-//                    String role = oAuth2User.getAuthorities().stream()
-//                            .findFirst()
-//                            .map(GrantedAuthority::getAuthority)
-//                            .orElse("ROLE_USER");
-//
-//                    String token = jwtUtil.createJwt(username, role, 60 * 60 * 10L);
-//                    response.addHeader("Authorization", "Bearer " + token);
-//                    response.sendRedirect("/"); // 로그인 성공 후 리다이렉트
-//                })
+                    .successHandler(customSuccessHandler)
         );
-
 
         // 🔹 경로별 접근 권한 설정
         http.authorizeHttpRequests((auth) -> auth
-                .requestMatchers("/api/auth/login", "/", "/api/member/register").permitAll()  // 로그인, 회원가입, 홈 페이지는 인증 없이 접근 가능
-                .requestMatchers("/admin").hasRole("ADMIN")           // '/admin' 경로는 ADMIN 역할이 있어야 접근 가능
-                .anyRequest().authenticated()                         // 그 외의 모든 요청은 인증 필요
+                .requestMatchers("/api/auth/login", "/", "/api/member/register",
+                        "/login/oauth2/code/naver", "/login/oauth2/code/kakao").permitAll()
+                .requestMatchers("/admin").hasRole("ADMIN")
+                .anyRequest().authenticated()
         );
 
         // 🔹 JWTFilter를 LoginFilter 이전에 실행되도록 등록
