@@ -1,13 +1,10 @@
 package com.example.meditag.global.config;
 
-import com.example.meditag.domain.auth.service.LoginService;
-import com.example.meditag.domain.oauth2.dto.CustomOAuth2User;
 import com.example.meditag.domain.oauth2.hendler.CustomSuccessHandler;
 import com.example.meditag.domain.oauth2.service.CustomOAuth2UserService;
 import com.example.meditag.global.jwt.JWTFilter;
 import com.example.meditag.global.jwt.JWTUtil;
 import com.example.meditag.global.jwt.LoginFilter;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
