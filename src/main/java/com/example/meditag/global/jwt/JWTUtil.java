@@ -1,6 +1,7 @@
 package com.example.meditag.global.jwt;
 
 import io.jsonwebtoken.Jwts;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -9,18 +10,20 @@ import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
 
+@Slf4j
 @Component // 스프링에서 관리되는 빈으로 등록
 public class JWTUtil {
 
     private SecretKey secretKey; // JWT 서명에 사용할 비밀 키
 
     public JWTUtil(@Value("${spring.jwt.secret}") String secret) {
-        // 설정 파일에서 가져온 비밀 키를 바이트 배열로 변환하여 SecretKey 객체 생성
         secretKey = new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), Jwts.SIG.HS256.key().build().getAlgorithm());
+        log.info("[JWTUtil] JWT secretKey 생성: {}", secretKey);
     }
 
     // 토큰에서 username 추출
     public String getUsername(String token) {
+        log.info("[JWTUtil/getUsername] 토큰에서 username 추출, 토큰: {}", token);  // 토큰 정보도 로그에 남김
         return Jwts.parser()
                 .verifyWith(secretKey)
                 .build()
@@ -31,6 +34,7 @@ public class JWTUtil {
 
     // 토큰에서 role 추출
     public String getRole(String token) {
+        log.info("[JWTUtil/getRole] 토큰에서 role 추출, 토큰: {}", token);  // 토큰 정보도 로그에 남김
         return Jwts.parser()
                 .verifyWith(secretKey)
                 .build()
@@ -41,6 +45,7 @@ public class JWTUtil {
 
     // 토큰이 만료되었는지 확인
     public Boolean isExpired(String token) {
+        log.info("[JWTUtil/isExpired] 토큰 만료 여부 확인, 토큰: {}", token);  // 토큰 정보도 로그에 남김
         return Jwts.parser()
                 .verifyWith(secretKey)
                 .build()
@@ -52,6 +57,7 @@ public class JWTUtil {
 
     // 새로운 JWT 생성 (username, role, 만료 시간 지정)
     public String createJwt(String username, String role, Long expiredMs) {
+        log.info("[JWTUtil/createJwt] 새로운 JWT 생성, username: {}, role: {}, 만료 시간(ms): {}", username, role, expiredMs);
         return Jwts.builder()
                 .claim("username", username) // username 클레임 추가
                 .claim("role", role) // role 클레임 추가
@@ -61,3 +67,4 @@ public class JWTUtil {
                 .compact(); // 토큰 생성 및 반환
     }
 }
+
