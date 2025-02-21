@@ -1,7 +1,9 @@
 package com.example.meditag.domain.oauth2.hendler;
 
+import com.example.meditag.domain.auth.dto.response.TokenDTO;
 import com.example.meditag.domain.oauth2.dto.CustomOAuth2User;
 import com.example.meditag.global.jwt.JWTUtil;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
@@ -37,14 +39,12 @@ public class CustomSuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
 
         String token = jwtUtil.createJwt(username, role, 60*60*60L);
 
-        response.addCookie(createCookie("Authorization", token));//쿠기 넣어주기(네임,value)
-        response.sendRedirect("http://localhost:8080/");// 로그인 성공 리다이렉트
-    }
-    //쿠키 생성 함수
-    private Cookie createCookie( String key, String value){
-        Cookie cookie = new Cookie(key, value);
-        cookie.setPath("/");//전역에 쿠키를 보여줌
-        cookie.setHttpOnly(true);// 자바스크립트가 가져가지 못하게 (쿠키)
-        return cookie;
+        // 응답 헤더 및 JSON 응답 추가
+        response.setContentType("application/json");
+        response.setCharacterEncoding("UTF-8");
+        new ObjectMapper().writeValue(response.getWriter(), new TokenDTO(token));
+
+        // JWT를 Authorization 헤더에 추가
+        response.addHeader("Authorization", "Bearer " + token);
     }
 }

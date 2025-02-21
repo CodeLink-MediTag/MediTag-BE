@@ -20,9 +20,11 @@ import java.util.Optional;
 public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
     private final MemberRepository memberRepository;
+
     public CustomOAuth2UserService(MemberRepository memberRepository) {
         this.memberRepository = memberRepository;
     }
+
     //사용자정보 데이터를 인자로 받아오는 매소드
     @Override
     public OAuth2User loadUser(OAuth2UserRequest userRequest) throws OAuth2AuthenticationException{

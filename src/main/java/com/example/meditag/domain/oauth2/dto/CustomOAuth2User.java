@@ -18,7 +18,6 @@ public class CustomOAuth2User implements OAuth2User {
         this.role = role;
     }
 
-
     @Override
     public Map<String, Object> getAttributes() {//모든데이터
         return null;
