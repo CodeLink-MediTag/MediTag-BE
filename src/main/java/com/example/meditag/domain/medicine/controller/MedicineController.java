@@ -1,16 +1,21 @@
 package com.example.meditag.domain.medicine.controller;
 
-import com.example.meditag.domain.medicine.dto.request.MedicineRequestDto;
-import com.example.meditag.domain.medicine.entity.Medicine;
-import com.example.meditag.domain.medicine.repository.MedicineRepository;
+import com.example.meditag.domain.auth.dto.CustomUserDetails;
+import com.example.meditag.domain.medicine.dto.request.MedicineCreateRequestDTO;
+
+import com.example.meditag.domain.medicine.dto.response.MedicineCreateResponseDTO;
 import com.example.meditag.domain.medicine.service.MedicineService;
 import com.example.meditag.global.aws.S3Service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/medicines")
@@ -19,16 +24,15 @@ public class MedicineController {
 
     private final MedicineService medicineService;
     private final S3Service s3Service;
+
     //약 알림 등록
-    @PostMapping("/reminders")
-    public ResponseEntity<String> reminders(@RequestBody MedicineRequestDto requestDto) {
+    @PostMapping
+    public ResponseEntity<String> saveMedicine(@AuthenticationPrincipal CustomUserDetails customUserDetails, @RequestBody MedicineCreateRequestDTO requestDto) {
 
-
-        medicineService.saveMedicine(requestDto);
+        medicineService.saveMedicine(customUserDetails.getUsername(), requestDto);
 
         return ResponseEntity.ok("약이 성공적으로 저장되었습니다.");
     }
-
 
 
     @GetMapping("/presigned-url")
