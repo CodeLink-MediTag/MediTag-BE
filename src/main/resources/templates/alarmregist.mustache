@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+<body>
+<h4>약 등록</h4>
+<form id="medicines_reminders_Form">
+    <label for="name">이름 입력</label>
+    <input id="name" name="name">
+    <label for="characteristic">특징 입력</label>
+    <input id="characteristic" name="characteristic">
+    <label for="startDate">시작날짜</label>
+    <input id="startDate" name="startDate" value="2025-02-25">
+    <label for="duration">복용기간 입력</label>
+    <input id="duration" name="duration">
+    <label for="frequency">횟수 입력</label>
+    <input id="frequency" name="frequency">
+    <label for="productImage">이미지</label>
+    <input type="file" id="productImage">
+
+    <button type="button" onclick="submitForm()">전송</button>
+</form>
+<script>
+    async function submitForm(){
+        const fileInput = document.getElementById('productImage');
+        const form = document.getElementById('medicines_reminders_Form');
+        let imageUrl ='';
+        let medicineData;
+
+        if(fileInput.files.length >0){
+            const file = fileInput.files[0];
+            const name = encodeURIComponent(file.name);
+
+            try{
+                let presignedUrl = await fetch('/api/medicines/presigned-url?filename=' + name);
+                presignedUrl = await presignedUrl.text();
+
+                let uploadResult = await fetch(presignedUrl,{
+                    method : 'PUT',
+                    body: file,
+                    headers: {
+                        'Content-Type': file.type // 파일의 MIME 타입 사용
+                    }
+                });
+                if (uploadResult.ok) {
+                    // 업로드 성공 시 URL 저장
+                    imageUrl = presignedUrl.split("?")[0];
+                } else {
+                    alert('파일 업로드에 실패했습니다.');
+                    return; // 실패 시 함수 종료 추가
+                }
+            }catch (e){
+                console.error('업로드 오류:', e);
+                alert('업로드 중 오류가 발생했습니다.');
+                return; // 실패 시 함수 종료 추가
+            }
+
+            medicineData = {
+                name: document.getElementById('name').value,
+                characteristic: document.getElementById('characteristic').value,
+                startDate: document.getElementById('startDate').value,
+                duration: parseInt(document.getElementById('duration').value),
+                frequency: parseInt(document.getElementById('frequency').value),
+                imageUrl: imageUrl,
+                isPrescribed: false,
+                memberId: 1
+            };
+        } else {
+            medicineData = {
+                name: document.getElementById('name').value,
+                characteristic: document.getElementById('characteristic').value,
+                startDate: document.getElementById('startDate').value,
+                duration: parseInt(document.getElementById('duration').value),
+                frequency: parseInt(document.getElementById('frequency').value),
+                isPrescribed: false,
+                imageUrl: null,
+                memberId: 1
+            };
+        }
+
+        try {
+            const response = await fetch('/api/medicines/reminders', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(medicineData)
+            });
+
+            if (response.ok) {
+                alert('등록 성공');
+                document.getElementById('medicines_reminders_Form').reset();
+            } else {
+                console.log(response)
+                console.log(medicineData)
+                alert('등록 실패');
+            }
+        } catch (error) {
+            console.error(error);
+            alert('오류 발생');
+        }
+    }
+</script>
+</body>
+</html>
