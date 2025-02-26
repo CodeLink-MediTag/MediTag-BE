@@ -5,13 +5,17 @@ import com.example.meditag.domain.medicine.dto.request.MedicineCreateRequestDTO;
 
 import com.example.meditag.domain.medicine.dto.response.MedicineCreateResponseDTO;
 import com.example.meditag.domain.medicine.service.MedicineService;
+import com.example.meditag.global.aws.S3Service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
 
 @RestController
 @RequestMapping("/api/medicines")
@@ -19,6 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class MedicineController {
 
     private final MedicineService medicineService;
+    private final S3Service s3Service;
 
     //약 알림 등록
     @PostMapping
@@ -27,6 +32,14 @@ public class MedicineController {
         medicineService.saveMedicine(customUserDetails.getUsername(), requestDto);
 
         return ResponseEntity.ok("약이 성공적으로 저장되었습니다.");
+    }
+
+
+    @GetMapping("/presigned-url")
+    @ResponseBody
+    String getUrl(@RequestParam String filename){
+        var result = s3Service.createPresignedUrl("test/"+filename);
+        return result;
     }
 
 

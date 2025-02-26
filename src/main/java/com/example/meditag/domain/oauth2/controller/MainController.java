@@ -9,4 +9,9 @@ public class MainController {
 
         return "main";
     }
+    @GetMapping("/reminder")
+    public String reminderpage(){
+        return "alarmregist";
+    }
+
 }
