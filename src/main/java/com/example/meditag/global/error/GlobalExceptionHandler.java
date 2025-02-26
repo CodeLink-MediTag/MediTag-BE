@@ -1,5 +1,6 @@
 package com.example.meditag.global.error;
 
+import com.example.meditag.global.error.exception.CustomAuthenticationException;
 import com.example.meditag.global.error.exception.CustomException;
 import com.example.meditag.global.error.exception.ErrorCode;
 import org.springframework.http.HttpStatus;
@@ -25,6 +26,7 @@ public class GlobalExceptionHandler {
                 .body(ErrorResponse.of(HttpStatus.INTERNAL_SERVER_ERROR.value(), ex.getMessage()));
     }
 
+    // 커스텀 예외 처리
     @ExceptionHandler(CustomException.class)
     public ResponseEntity<ErrorResponse> handleCustomException(CustomException ex) {
         ErrorCode errorCode = ex.getErrorCode();
@@ -37,12 +39,19 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, String>> handleValidationExceptions(MethodArgumentNotValidException ex) {
         Map<String, String> errors = new HashMap<>();
 
-        // 유효성 검사에서 발생한 오류 메시지만 추출
         for (FieldError fieldError : ex.getBindingResult().getFieldErrors()) {
             errors.put(fieldError.getField(), fieldError.getDefaultMessage());
         }
 
-        // 필드 이름과 메시지만 포함하여 반환
         return new ResponseEntity<>(errors, HttpStatus.BAD_REQUEST);
+    }
+
+    // 인증 예외 처리
+    @ExceptionHandler(CustomAuthenticationException.class)
+    public ResponseEntity<ErrorResponse> handleAuthenticationException(CustomAuthenticationException ex) {
+        ErrorCode errorCode = ex.getErrorCode();
+        return ResponseEntity
+                .status(errorCode.getStatus())
+                .body(new ErrorResponse(errorCode.getStatus().value(), errorCode.getMessage()));
     }
 }
