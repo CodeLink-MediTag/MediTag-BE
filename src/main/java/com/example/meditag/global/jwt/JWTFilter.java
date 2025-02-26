@@ -1,7 +1,9 @@
 package com.example.meditag.global.jwt;
 
-import com.example.meditag.domain.auth.dto.request.CustomUserDetails;
+import com.example.meditag.domain.auth.dto.CustomUserDetails;
 import com.example.meditag.domain.member.entity.Member;
+import com.example.meditag.global.error.exception.CustomAuthenticationException;
+import com.example.meditag.global.error.exception.ErrorCode;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -28,20 +30,15 @@ public class JWTFilter extends OncePerRequestFilter { // 한 요청당 한 번�
 
         // Authorization 헤더가 없거나 "Bearer "로 시작하지 않으면 필터 진행 후 종료
         if (authorization == null || !authorization.startsWith("Bearer ")) {
-            System.out.println("token null");
-            filterChain.doFilter(request, response);
-            return;
+            throw new CustomAuthenticationException(ErrorCode.TOKEN_MISSING);
         }
 
-        System.out.println("authorization now");
         // "Bearer " 부분을 제거하고 순수한 토큰 값만 추출
         String token = authorization.split(" ")[1];
 
         // 토큰의 만료 여부 확인
         if (jwtUtil.isExpired(token)) {
-            System.out.println("token expired");
-            filterChain.doFilter(request, response);
-            return;
+            throw new CustomAuthenticationException(ErrorCode.TOKEN_EXPIRED);
         }
 
         // 토큰에서 username과 role을 추출
@@ -59,6 +56,7 @@ public class JWTFilter extends OncePerRequestFilter { // 한 요청당 한 번�
 
         // 스프링 시큐리티 인증 토큰 생성
         Authentication authToken = new UsernamePasswordAuthenticationToken(customUserDetails, null, customUserDetails.getAuthorities());
+
         // 시큐리티 컨텍스트에 인증 정보 설정
         SecurityContextHolder.getContext().setAuthentication(authToken);
 

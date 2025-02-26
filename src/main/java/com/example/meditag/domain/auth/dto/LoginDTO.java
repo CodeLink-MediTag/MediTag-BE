@@ -1,4 +1,4 @@
-package com.example.meditag.domain.auth.dto.request;
+package com.example.meditag.domain.auth.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

@@ -1,10 +1,10 @@
 package com.example.meditag.global.config;
 
-import com.example.meditag.domain.auth.service.LoginService;
+import com.example.meditag.domain.oauth2.hendler.CustomSuccessHandler;
+import com.example.meditag.domain.oauth2.service.CustomOAuth2UserService;
 import com.example.meditag.global.jwt.JWTFilter;
 import com.example.meditag.global.jwt.JWTUtil;
-import com.example.meditag.global.jwt.LoginFilter;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.example.meditag.domain.auth.security.LoginFilter;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -32,10 +32,18 @@ public class SecurityConfig {
     // 🔹 JWT 관련 유틸 클래스 (토큰 생성 및 검증)
     private final JWTUtil jwtUtil;
 
+    private final CustomOAuth2UserService customOAuth2UserService;
+
+    private final CustomSuccessHandler customSuccessHandler;
+
+
+
     // 🔹 생성자를 통해 AuthenticationConfiguration과 JWTUtil을 주입받음
-    public SecurityConfig(AuthenticationConfiguration authenticationConfiguration, JWTUtil jwtUtil) {
+    public SecurityConfig(AuthenticationConfiguration authenticationConfiguration, JWTUtil jwtUtil, CustomOAuth2UserService customOAuth2UserService, CustomSuccessHandler customSuccessHandler) {
         this.authenticationConfiguration = authenticationConfiguration;
         this.jwtUtil = jwtUtil;
+        this.customOAuth2UserService = customOAuth2UserService;
+        this.customSuccessHandler = customSuccessHandler;
     }
 
     // 🔹 AuthenticationManager를 Bean으로 등록
@@ -91,11 +99,20 @@ public class SecurityConfig {
         // 🔹 HTTP Basic 인증 비활성화 (기본 인증 방식 제거)
         http.httpBasic((auth) -> auth.disable());
 
+
+        //oauth2 로그인 설정
+        http.oauth2Login(oauth2 -> oauth2
+                .userInfoEndpoint(userInfo -> userInfo
+                        .userService(customOAuth2UserService))
+                    .successHandler(customSuccessHandler)
+        );
+
         // 🔹 경로별 접근 권한 설정
         http.authorizeHttpRequests((auth) -> auth
-                .requestMatchers("/api/auth/login", "/", "/api/member/register").permitAll()  // 로그인, 회원가입, 홈 페이지는 인증 없이 접근 가능
-                .requestMatchers("/admin").hasRole("ADMIN")           // '/admin' 경로는 ADMIN 역할이 있어야 접근 가능
-                .anyRequest().authenticated()                         // 그 외의 모든 요청은 인증 필요
+                .requestMatchers("/api/auth/login", "/", "/api/member/register",
+                        "/login/oauth2/code/naver", "/login/oauth2/code/kakao").permitAll()
+                .requestMatchers("/admin").hasRole("ADMIN")
+                .anyRequest().authenticated()
         );
 
         // 🔹 JWTFilter를 LoginFilter 이전에 실행되도록 등록

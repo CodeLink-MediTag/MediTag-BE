@@ -1,4 +1,4 @@
-package com.example.meditag.domain.auth.dto.response;
+package com.example.meditag.global.jwt;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
