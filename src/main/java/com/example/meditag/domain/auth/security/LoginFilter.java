@@ -1,15 +1,13 @@
-package com.example.meditag.global.jwt;
+package com.example.meditag.domain.auth.security;
 
-import com.example.meditag.domain.auth.dto.request.CustomUserDetails;
-import com.example.meditag.domain.auth.dto.request.LoginDTO;
-import com.example.meditag.domain.auth.dto.response.TokenDTO;
-import com.example.meditag.domain.member.entity.Member;
+import com.example.meditag.domain.auth.dto.CustomUserDetails;
+import com.example.meditag.domain.auth.dto.LoginDTO;
 import com.example.meditag.global.error.ErrorResponse;
-import com.example.meditag.global.error.exception.CustomException;
 import com.example.meditag.global.error.exception.ErrorCode;
+import com.example.meditag.global.jwt.JWTUtil;
+import com.example.meditag.global.jwt.TokenDTO;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
@@ -37,6 +35,7 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter { // 로�
         this.jwtUtil = jwtUtil;
 //        this.authenticationEntryPoint = authenticationEntryPoint;
         setFilterProcessesUrl("/api/auth/login");
+        log.info("[LoginFilter] LoginFilter 생성자 주입");
     }
 
     @Override
@@ -45,8 +44,7 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter { // 로�
             // JSON 요청을 LoginDTO 객체로 변환
             LoginDTO loginDTO = new ObjectMapper().readValue(request.getInputStream(), LoginDTO.class);
 
-            // 로그 추가
-            log.info("Attempting authentication for username: {}", loginDTO.getUsername());
+            log.info("[LoginFilter/attemptAuthentication] 1. loginDTO로 객체 변환 email:{}, password:{}", loginDTO.getUsername(), loginDTO.getPassword());
 
             // UsernamePasswordAuthenticationToken 생성
             UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
@@ -54,14 +52,13 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter { // 로�
                     loginDTO.getPassword()
             );
 
-            // 추가 로깅
-            log.debug("Created authentication token for username: {}", loginDTO.getUsername());
+            log.info("[LoginFilter/attemptAuthentication] 2. UsernamePasswordAuthenticationToken 생성 authToken: {}", authToken);
 
             // 인증 시도
             return authenticationManager.authenticate(authToken);
 
         } catch (IOException e) {
-            log.error("Failed to parse authentication request", e);
+            log.error("[LoginFilter] 로그인 중에 에러", e);
             throw new AuthenticationServiceException("로그인 입력을 읽는 도중 오류 발생: " + e.getMessage());
         }
     }
@@ -73,21 +70,27 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter { // 로�
         CustomUserDetails customUserDetails = (CustomUserDetails) authentication.getPrincipal();
         String username = customUserDetails.getUsername();
 
+        log.info("[LoginFilter/successfulAuthentication] 3. 인증된 사용자 정보 가져오기: {}", username);
+
         // 사용자 권한 가져오기
         Collection<? extends GrantedAuthority> authorities = authentication.getAuthorities();
         Iterator<? extends GrantedAuthority> iterator = authorities.iterator();
         GrantedAuthority auth = iterator.next();
         String role = auth.getAuthority(); // 역할(role) 가져오기
 
-        log.info("Generating JWT token for username: {} with role: {}", username, role);
+        log.info("[LoginFilter/successfulAuthentication] 4. 인증된 사용자 권한 가져오기: {}", role);
 
         // JWT 토큰 생성 (10시간 유효)
         String token = jwtUtil.createJwt(username, role, 60 * 60 * 10L);
+
+        log.info("[LoginFilter/successfulAuthentication] 5. JWT 토큰 생성: {}", token);
 
         // TokenDTO 생성 및 JSON 응답
         TokenDTO tokenDTO = TokenDTO.builder()
                 .accessToken(token)
                 .build();
+
+        log.info("[LoginFilter/successfulAuthentication] 6. JWT TokenDTO 생성: {}", tokenDTO);
 
         // JSON 응답 설정 (반환값)
         response.setContentType("application/json");
@@ -97,7 +100,7 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter { // 로�
         // 응답 헤더에 JWT 추가
         response.addHeader("Authorization", "Bearer " + token);
 
-        log.info("JWT token successfully generated and added to response header");
+        log.info("[LoginFilter/successfulAuthentication] 7. JWT 토큰 HTTP 헤더에 추가 완료");
     }
 
     // 로그인 실패 시 실행되는 메서드
