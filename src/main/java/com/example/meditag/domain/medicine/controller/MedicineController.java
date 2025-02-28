@@ -3,6 +3,7 @@ package com.example.meditag.domain.medicine.controller;
 import com.example.meditag.domain.auth.dto.CustomUserDetails;
 import com.example.meditag.domain.medicine.dto.request.MedicineCreateRequestDTO;
 import com.example.meditag.domain.medicine.dto.response.MedicineGetDateResponseDTO;
+import com.example.meditag.domain.medicine.dto.response.MedicineResponseDTO;
 import com.example.meditag.domain.medicine.service.MedicineService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -38,6 +39,17 @@ public class MedicineController {
         MedicineGetDateResponseDTO responseDTO = medicineService.getMedicinesByDate(customUserDetails.getUsername(), date);
 
         return ResponseEntity.ok(responseDTO);
+    }
+
+    // 복용 여부 API
+    @PatchMapping("/{medicineId}/alarm/{alarmId}/taking")
+    public ResponseEntity<String> toggleTaking(@AuthenticationPrincipal CustomUserDetails customUserDetails,
+                                               @PathVariable("medicineId") Long medicineId,
+                                               @PathVariable("alarmId") Long alarmId) {
+
+        medicineService.toggleTaking(customUserDetails.getUsername(), medicineId, alarmId);
+
+        return ResponseEntity.ok("복용 여부가 변경되었습니다.");
     }
 
     // 사진 URL 반환
