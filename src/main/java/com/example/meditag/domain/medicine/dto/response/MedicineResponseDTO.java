@@ -11,7 +11,7 @@ import java.time.LocalDate;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class MedicineCreateResponseDTO {
+public class MedicineResponseDTO {
 
     private Long id;
 
@@ -35,7 +35,4 @@ public class MedicineCreateResponseDTO {
 
     //처방약 여부
     private boolean isPrescribed;
-
-    //멤버 아이디
-    private Long memberId;
 }
