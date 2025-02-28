@@ -1,12 +1,13 @@
 package com.example.meditag.domain.medicine.dto.request;
 
-import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.List;
 
 @Getter
 @AllArgsConstructor
@@ -14,24 +15,30 @@ import java.time.LocalDate;
 @Builder
 public class MedicineCreateRequestDTO {
 
-    //약 이름
+    // 약 이름
     private String name;
 
-    //특징
+    // 특징
     private String characteristic;
 
-    //복용 시작 날짜
+    // 복용 시작 날짜
     private LocalDate startDate;
 
-    //복용 기간
+    // 복용 기간
     private int duration;
 
-    //복용 횟수(일반약 일때)
+    // 복용 횟수(일반약 일때)
     private int frequency;
 
-    //사진
+    // 사진
     private String imageUrl;
 
-    //처방약 여부
-    private boolean isPrescribed;
+    // 처방약 여부
+    private boolean prescribed;
+
+    // 처방약일 경우(isPrescribed=true): 아침, 점심, 저녁 등 복용 시간대 선택 (예: ["아침", "저녁"])
+    private List<String> dosageTimes;
+
+    // 일반약일 경우(isPrescribed=false): 알람 시간 목록
+    private List<LocalDateTime> alarmTimes;
 }

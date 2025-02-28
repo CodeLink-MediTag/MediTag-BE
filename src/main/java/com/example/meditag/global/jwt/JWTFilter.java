@@ -27,7 +27,7 @@ public class JWTFilter extends OncePerRequestFilter { // 한 요청당 한 번�
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
 
         // 회원가입 요청과 로그인 요청에 대해서는 JWT 검증을 제외
-        if (request.getRequestURI().startsWith("/api/member/register") || request.getRequestURI().startsWith("/api/auth/login")) {
+        if (request.getRequestURI().startsWith("/api/member/register") || request.getRequestURI().startsWith("/api/auth/login") || request.getRequestURI().startsWith("/login")) {
             filterChain.doFilter(request, response); // 필터를 건너뜀
             return;
         }
@@ -37,7 +37,7 @@ public class JWTFilter extends OncePerRequestFilter { // 한 요청당 한 번�
 
         // Authorization 헤더가 없거나 "Bearer "로 시작하지 않으면 필터 진행 후 종료
         if (authorization == null || !authorization.startsWith("Bearer ")) {
-            throw new CustomAuthenticationException(ErrorCode.TOKEN_MISSING);
+           throw new CustomAuthenticationException(ErrorCode.TOKEN_MISSING);
         }
 
         // "Bearer " 부분을 제거하고 순수한 토큰 값만 추출

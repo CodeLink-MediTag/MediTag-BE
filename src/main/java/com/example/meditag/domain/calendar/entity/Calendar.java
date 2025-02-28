@@ -1,14 +1,11 @@
 package com.example.meditag.domain.calendar.entity;
 
-import com.example.meditag.domain.medicine_calendar.entity.MedicineCalendar;
+import com.example.meditag.domain.medicine.entity.Medicine;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-
-import java.util.ArrayList;
-import java.util.List;
 
 @Entity
 @Getter
@@ -24,7 +21,8 @@ public class Calendar {
     //날짜
     private String date;
 
-    //약_캘린더 연관관계 매핑 (일대다)
-    @OneToMany(mappedBy = "calendar", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<MedicineCalendar> medicineCalendars = new ArrayList<>();
+    //약 연관관계 매핑(다대일)
+    @ManyToOne
+    @JoinColumn(name = "medicine_id") // 외래키 이름 지정
+    private Medicine medicine;
 }

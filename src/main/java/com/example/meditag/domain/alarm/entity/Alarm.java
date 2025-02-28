@@ -2,7 +2,6 @@ package com.example.meditag.domain.alarm.entity;
 
 import com.example.meditag.domain.common.model.BaseTimeEntity;
 import com.example.meditag.domain.medicine.entity.Medicine;
-import com.example.meditag.domain.medicine_calendar.entity.MedicineCalendar;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -31,8 +30,8 @@ public class Alarm extends BaseTimeEntity {
     //복용 여부
     private boolean isTaking;
 
-    //약_캘린더 연관관계 매핑(다대일)
+    //약 연관관계 매핑(다대일)
     @ManyToOne
-    @JoinColumn(name = "medicineCalendar_id") // 외래키 이름 지정
-    private MedicineCalendar medicineCalendar;
+    @JoinColumn(name = "medicine_id") // 외래키 이름 지정
+    private Medicine medicine;
 }
