@@ -170,6 +170,7 @@ public class MedicineService {
                     .medicineName(medicine.getName())
                     .characteristic(medicine.getCharacteristic())
                     .imageUrl(medicine.getImageUrl())
+                    .prescribed(medicine.isPrescribed())
                     .alarms(alarmDTOs)
                     .build();
 
