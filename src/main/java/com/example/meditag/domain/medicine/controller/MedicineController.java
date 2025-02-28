@@ -2,6 +2,7 @@ package com.example.meditag.domain.medicine.controller;
 
 import com.example.meditag.domain.auth.dto.CustomUserDetails;
 import com.example.meditag.domain.medicine.dto.request.MedicineCreateRequestDTO;
+import com.example.meditag.domain.medicine.dto.response.MedicineGetDateResponseDTO;
 import com.example.meditag.domain.medicine.service.MedicineService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,12 +30,13 @@ public class MedicineController {
         return ResponseEntity.ok("약 정보와 알림이 성공적으로 저장되었습니다.");
     }
 
+    // 특정 날짜 복약 정보 조회 API
+
+    // 복용 여부 API
+
+    // 사진 URL 반환
     @GetMapping("/presigned-url")
     public String getPresignedUrl(@RequestParam String filename) {
         return medicineService.getPresignedUrl(filename);
     }
-
-    // 특정 날짜 복약 정보 조회 API
-
-    // 복용 여부 API
 }
