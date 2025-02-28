@@ -31,8 +31,14 @@ public class MedicineController {
     }
 
     // 특정 날짜 복약 정보 조회 API
+    @GetMapping
+    public ResponseEntity<MedicineGetDateResponseDTO> getMedicinesByDate(@AuthenticationPrincipal CustomUserDetails customUserDetails,
+                                                                         @RequestParam String date) {
 
-    // 복용 여부 API
+        MedicineGetDateResponseDTO responseDTO = medicineService.getMedicinesByDate(customUserDetails.getUsername(), date);
+
+        return ResponseEntity.ok(responseDTO);
+    }
 
     // 사진 URL 반환
     @GetMapping("/presigned-url")

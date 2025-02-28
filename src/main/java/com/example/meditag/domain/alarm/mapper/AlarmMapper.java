@@ -14,7 +14,7 @@ public class AlarmMapper {
                 .medicine(medicine)
                 .dosageTime(dosageTime)
                 .alarmTime(alarmTime)
-                .isTaking(false)
+                .taking(false)
                 .build();
     }
 
@@ -23,7 +23,7 @@ public class AlarmMapper {
         return Alarm.builder()
                 .medicine(medicine)
                 .alarmTime(alarmTime)
-                .isTaking(false)
+                .taking(false)
                 .build();
     }
 }
