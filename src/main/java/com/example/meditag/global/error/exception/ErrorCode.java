@@ -19,6 +19,9 @@ public enum ErrorCode {
     INVALID_INPUT_VALUE(HttpStatus.BAD_REQUEST, "복용 시간대를 지정해야 합니다."),
     ALREADY_HAS_PRESCRIBED_MEDICINE(HttpStatus.BAD_REQUEST, "이미 처방약이 등록되어있습니다."),
 
+    // 약 조회
+    MEDICINE_NOT_FOUND_FOR_DATE(HttpStatus.BAD_REQUEST, "해당 날짜에 복약 정보가 없습니다."),
+
     // 인증 관련
     TOKEN_EXPIRED(HttpStatus.UNAUTHORIZED, "토큰이 만료되었습니다."),
     TOKEN_INVALID(HttpStatus.UNAUTHORIZED, "유효하지 않은 토큰입니다."),

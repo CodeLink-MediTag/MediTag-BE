@@ -28,7 +28,7 @@ public class Alarm extends BaseTimeEntity {
     private LocalDateTime alarmTime;
 
     //복용 여부
-    private boolean isTaking;
+    private boolean taking;
 
     //약 연관관계 매핑(다대일)
     @ManyToOne

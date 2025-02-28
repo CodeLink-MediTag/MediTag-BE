@@ -7,6 +7,8 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
+
 @Entity
 @Getter
 @AllArgsConstructor
@@ -19,7 +21,7 @@ public class Calendar {
     private Long id;
 
     //날짜
-    private String date;
+    private LocalDate date;
 
     //약 연관관계 매핑(다대일)
     @ManyToOne
