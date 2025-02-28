@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.Date;
 
 @Slf4j
@@ -41,6 +42,28 @@ public class JWTUtil {
                 .parseSignedClaims(token)
                 .getPayload()
                 .get("role", String.class);
+    }
+
+    // 토큰에서 provider 추출
+    public String getProvider(String token) {
+        log.info("[JWTUtil/getProvider] 토큰에서 provider 추출, 토큰: {}", token);
+        return Jwts.parser()
+                .verifyWith(secretKey)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload()
+                .get("provider", String.class);
+    }
+
+    // 토큰에서 providerId 추출
+    public String getProviderId(String token) {
+        log.info("[JWTUtil/getProvider] 토큰에서 provider 추출, 토큰: {}", token);
+        return Jwts.parser()
+                .verifyWith(secretKey)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload()
+                .get("providerId", String.class);
     }
 
     // 토큰이 만료되었는지 확인

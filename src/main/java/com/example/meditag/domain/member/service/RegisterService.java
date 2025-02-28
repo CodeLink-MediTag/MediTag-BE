@@ -39,7 +39,7 @@ public class RegisterService {
                 .name(registerDTO.getName())
                 .phone(registerDTO.getPhone())
                 .password(bCryptPasswordEncoder.encode(password))  // 비밀번호 암호화
-                .role("USER")  // 기본 역할 설정
+                .role("ROLE_USER")  // 기본 역할 설정
                 .build();
 
         // 저장

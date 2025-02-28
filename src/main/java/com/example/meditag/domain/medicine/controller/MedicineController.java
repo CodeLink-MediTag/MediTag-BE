@@ -2,45 +2,39 @@ package com.example.meditag.domain.medicine.controller;
 
 import com.example.meditag.domain.auth.dto.CustomUserDetails;
 import com.example.meditag.domain.medicine.dto.request.MedicineCreateRequestDTO;
-
-import com.example.meditag.domain.medicine.dto.response.MedicineCreateResponseDTO;
 import com.example.meditag.domain.medicine.service.MedicineService;
-import com.example.meditag.global.aws.S3Service;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.*;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
-
+@Slf4j
 @RestController
 @RequestMapping("/api/medicines")
 @RequiredArgsConstructor
 public class MedicineController {
 
     private final MedicineService medicineService;
-    private final S3Service s3Service;
 
-    //약 알림 등록
+    // 복약 알림 등록 API
     @PostMapping
-    public ResponseEntity<String> saveMedicine(@AuthenticationPrincipal CustomUserDetails customUserDetails, @RequestBody MedicineCreateRequestDTO requestDto) {
+    public ResponseEntity<String> createMedicine(@AuthenticationPrincipal CustomUserDetails customUserDetails,
+                                                 @RequestPart(value = "data") MedicineCreateRequestDTO requestDto,
+                                                 @RequestPart(value = "file", required = false) MultipartFile file) {
 
-        medicineService.saveMedicine(customUserDetails.getUsername(), requestDto);
+        medicineService.createMedicine(customUserDetails.getUsername(), requestDto, file);
 
-        return ResponseEntity.ok("약이 성공적으로 저장되었습니다.");
+        return ResponseEntity.ok("약 정보와 알림이 성공적으로 저장되었습니다.");
     }
-
 
     @GetMapping("/presigned-url")
-    @ResponseBody
-    String getUrl(@RequestParam String filename){
-        var result = s3Service.createPresignedUrl("test/"+filename);
-        return result;
+    public String getPresignedUrl(@RequestParam String filename) {
+        return medicineService.getPresignedUrl(filename);
     }
 
+    // 특정 날짜 복약 정보 조회 API
 
+    // 복용 여부 API
 }

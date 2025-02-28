@@ -47,7 +47,7 @@ public class CustomSuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         log.info("[CustomSuccessHandler/onAuthenticationSuccess] 3. 사용자 권한: {}", role);
 
         // JWT 생성
-        String token = jwtUtil.createJwt(username, role, 1 * 60 * 60L); // 만료 시간: 60 * 60 * 60초
+        String token = jwtUtil.createJwt(username, role, 60 * 60 * 60L); // 만료 시간: 60 * 60 * 60초
         log.info("[CustomSuccessHandler/onAuthenticationSuccess] 4. JWT 생성 완료, 토큰: {}", token);
 
         // 응답 헤더 및 JSON 응답 추가
