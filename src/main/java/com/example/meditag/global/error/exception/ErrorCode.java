@@ -21,6 +21,8 @@ public enum ErrorCode {
 
     // 약 조회
     MEDICINE_NOT_FOUND_FOR_DATE(HttpStatus.BAD_REQUEST, "해당 날짜에 복약 정보가 없습니다."),
+    MEDICINE_NOT_FOUND(HttpStatus.BAD_REQUEST, "약을 찾을 수 없습니다."),
+    ALARM_NOT_FOUND(HttpStatus.BAD_REQUEST, "알림을 찾을 수 없습니다."),
 
     // 인증 관련
     TOKEN_EXPIRED(HttpStatus.UNAUTHORIZED, "토큰이 만료되었습니다."),

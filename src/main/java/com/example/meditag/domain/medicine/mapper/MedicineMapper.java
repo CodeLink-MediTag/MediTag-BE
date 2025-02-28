@@ -1,7 +1,7 @@
 package com.example.meditag.domain.medicine.mapper;
 
 import com.example.meditag.domain.medicine.dto.request.MedicineCreateRequestDTO;
-import com.example.meditag.domain.medicine.dto.response.MedicineCreateResponseDTO;
+import com.example.meditag.domain.medicine.dto.response.MedicineResponseDTO;
 import com.example.meditag.domain.medicine.entity.Medicine;
 import com.example.meditag.domain.member.entity.Member;
 
@@ -22,8 +22,8 @@ public class MedicineMapper {
     }
 
     // Medicine -> MedicineCreateResponseDTO
-    public static MedicineCreateResponseDTO toMedicineCreateResponseDTO(Medicine medicine) {
-        return MedicineCreateResponseDTO.builder()
+    public static MedicineResponseDTO toMedicineResponseDTO(Medicine medicine) {
+        return MedicineResponseDTO.builder()
                 .id(medicine.getId())
                 .name(medicine.getName())
                 .characteristic(medicine.getCharacteristic())

@@ -1,11 +1,13 @@
 package com.example.meditag.domain.medicine.service;
 
+import com.example.meditag.domain.alarm.dto.response.AlarmResponseDTO;
 import com.example.meditag.domain.alarm.entity.Alarm;
+import com.example.meditag.domain.alarm.mapper.AlarmMapper;
 import com.example.meditag.domain.alarm.repository.AlarmRepository;
 import com.example.meditag.domain.alarm.service.AlarmService;
 import com.example.meditag.domain.calendar.service.CalendarService;
 import com.example.meditag.domain.medicine.dto.request.MedicineCreateRequestDTO;
-import com.example.meditag.domain.medicine.dto.response.MedicineCreateResponseDTO;
+import com.example.meditag.domain.medicine.dto.response.MedicineResponseDTO;
 import com.example.meditag.domain.medicine.dto.response.MedicineGetDateResponseDTO;
 import com.example.meditag.domain.medicine.entity.Medicine;
 import com.example.meditag.domain.medicine.mapper.MedicineMapper;
@@ -49,7 +51,7 @@ public class MedicineService {
 
     // 복약 알림 등록 API
     @Transactional
-    public MedicineCreateResponseDTO createMedicine(String username, MedicineCreateRequestDTO requestDto, MultipartFile file) {
+    public MedicineResponseDTO createMedicine(String username, MedicineCreateRequestDTO requestDto, MultipartFile file) {
         Member member = memberRepository.findByUsername(username)
                 .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_NOT_FOUND));
 
@@ -102,7 +104,7 @@ public class MedicineService {
         // 날짜별 Calendar 엔티티 생성
         calendarService.createCalendarForMedicine(savedMedicine, requestDto.getStartDate(), requestDto.getDuration());
 
-        return MedicineMapper.toMedicineCreateResponseDTO(savedMedicine);
+        return MedicineMapper.toMedicineResponseDTO(savedMedicine);
     }
 
     // 이미지 업로드 처리 로직을 별도 메서드로 분리
@@ -140,23 +142,22 @@ public class MedicineService {
     // 특정 날짜 복약 정보 조회 API
     @Transactional
     public MedicineGetDateResponseDTO getMedicinesByDate(String username, String date) {
-        // 1. 회원 정보 조회
         Member member = memberRepository.findByUsername(username)
                 .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_NOT_FOUND));
 
-        // 2. 해당 날짜에 복용해야 하는 약 정보 조회
+        // 해당 날짜에 복용해야 하는 약 정보 조회
         List<Calendar> calendars = calendarRepository.findByMemberAndDate(member, LocalDate.parse(date));
 
         if (calendars.isEmpty()) {
             throw new CustomException(ErrorCode.MEDICINE_NOT_FOUND_FOR_DATE);
         }
 
-        // 3. 해당 날짜에 복용해야 하는 약 리스트
+        // 해당 날짜에 복용해야 하는 약 리스트
         List<MedicineGetDateResponseDTO.MedicineDTO> medicineDTOList = new ArrayList<>();
         for (Calendar calendar : calendars) {
             Medicine medicine = calendar.getMedicine();
 
-            // 4. 알림 시간 조회
+            // 알림 시간 조회
             List<Alarm> alarms = alarmRepository.findByMedicineAndCalendar(medicine, calendar);
 
             List<MedicineGetDateResponseDTO.AlarmDTO> alarmDTOs = alarms.stream()
@@ -177,7 +178,7 @@ public class MedicineService {
             medicineDTOList.add(medicineDTO);
         }
 
-        // 5. 최종 DTO 반환
+        // 최종 DTO 반환
         return MedicineGetDateResponseDTO.builder()
                 .date(date)  // 요청된 날짜
                 .medicines(medicineDTOList)  // 해당 날짜에 복용해야 할 약 리스트
@@ -185,6 +186,23 @@ public class MedicineService {
     }
 
     // 복용 여부 API
+    @Transactional
+    public AlarmResponseDTO toggleTaking (String username, Long medicineId, Long alarmId) {
+        Member member = memberRepository.findByUsername(username)
+                .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_NOT_FOUND));
+
+        Medicine medicine = medicineRepository.findById(medicineId)
+                .orElseThrow(() -> new CustomException(ErrorCode.MEDICINE_NOT_FOUND));
+
+        Alarm alarm = alarmRepository.findById(alarmId)
+                .orElseThrow(() -> new CustomException(ErrorCode.ALARM_NOT_FOUND));
+
+        alarm.toggleTaking();
+
+        alarmRepository.save(alarm);
+
+        return AlarmMapper.toAlarmResponseDTO(alarm);
+    }
 
     // Presigned URL만 생성하여 반환하는 메서드 추가
     public String getPresignedUrl(String filename) {
