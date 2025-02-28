@@ -26,7 +26,7 @@ public class CalendarService {
         for (int i = 0; i < duration; i++) {
             LocalDate medicineDate = startDate.plusDays(i);  // 시작일로부터 duration 만큼 날짜 생성
             Calendar calendar = Calendar.builder()
-                    .date(medicineDate.toString()) // 날짜를 String 형식으로 저장
+                    .date(medicineDate) // 날짜를 String 형식으로 저장
                     .medicine(medicine)
                     .build();
             calendarList.add(calendar);
