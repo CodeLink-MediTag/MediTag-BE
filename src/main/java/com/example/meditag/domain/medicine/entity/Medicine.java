@@ -1,7 +1,8 @@
 package com.example.meditag.domain.medicine.entity;
 
+import com.example.meditag.domain.alarm.entity.Alarm;
+import com.example.meditag.domain.calendar.entity.Calendar;
 import com.example.meditag.domain.common.model.BaseTimeEntity;
-import com.example.meditag.domain.medicine_calendar.entity.MedicineCalendar;
 import com.example.meditag.domain.member.entity.Member;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -43,14 +44,18 @@ public class Medicine extends BaseTimeEntity {
     private String imageUrl;
 
     //처방약 여부
-    private boolean isPrescribed;
+    private boolean prescribed;
 
     //회원 연관관계 매핑 (다대일)
     @ManyToOne
     @JoinColumn(name = "member_id")
     private Member member;
 
-    //약_캘린더 연관관계 매핑 (일대다)
+    //알림 연관관계 매핑 (일대다)
     @OneToMany(mappedBy = "medicine", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<MedicineCalendar> medicineCalendars = new ArrayList<>();
+    private List<Alarm> alarms = new ArrayList<>();
+
+    //날짜 연관관계 매핑 (일대다)
+    @OneToMany(mappedBy = "medicine", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Calendar> calendars = new ArrayList<>();
 }

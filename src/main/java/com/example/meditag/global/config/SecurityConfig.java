@@ -100,17 +100,16 @@ public class SecurityConfig {
         http.httpBasic((auth) -> auth.disable());
 
 
-        //개발 중이여서 주석처리리 //oauth2 로그인 설정
-        // http.oauth2Login(oauth2 -> oauth2
-        //         .userInfoEndpoint(userInfo -> userInfo
-        //                 .userService(customOAuth2UserService))
-        //             .successHandler(customSuccessHandler)
-        // );
+        //oauth2 로그인 설정
+         http.oauth2Login(oauth2 -> oauth2
+                 .userInfoEndpoint(userInfo -> userInfo
+                         .userService(customOAuth2UserService))
+                     .successHandler(customSuccessHandler)
+         );
 
         // 🔹 경로별 접근 권한 설정
         http.authorizeHttpRequests((auth) -> auth
-                .requestMatchers("/api/auth/login", "/", "/api/member/register", "/**"
-                        ).permitAll() //"/login/oauth2/code/naver", "/login/oauth2/code/kakao" oauth2 주석석
+                .requestMatchers("/api/auth/login", "/", "/api/member/register", "/login/oauth2/code/naver", "/login/oauth2/code/kakao", "/login").permitAll()
                 .requestMatchers("/admin").hasRole("ADMIN")
                 .anyRequest().authenticated()
         );
