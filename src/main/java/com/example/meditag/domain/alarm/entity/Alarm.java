@@ -34,4 +34,9 @@ public class Alarm extends BaseTimeEntity {
     @ManyToOne
     @JoinColumn(name = "medicine_id") // 외래키 이름 지정
     private Medicine medicine;
+
+    // 복용 상태(isTaking)를 토글(반전)하는 메서드
+    public void toggleTaking() {
+        this.taking = !this.taking; // true → false 또는 false → true 변경
+    }
 }
