@@ -1,6 +1,7 @@
 package com.example.meditag.domain.medicine.service;
 
 import com.example.meditag.domain.alarm.service.AlarmService;
+import com.example.meditag.domain.calendar.service.CalendarService;
 import com.example.meditag.domain.medicine.dto.request.MedicineCreateRequestDTO;
 import com.example.meditag.domain.medicine.dto.response.MedicineCreateResponseDTO;
 import com.example.meditag.domain.medicine.entity.Medicine;
@@ -21,7 +22,13 @@ import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.io.OutputStream;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
+
+import com.example.meditag.domain.calendar.entity.Calendar;
+import com.example.meditag.domain.calendar.repository.CalendarRepository;
 
 @Slf4j
 @Service
@@ -32,6 +39,7 @@ public class MedicineService {
     private final MedicineRepository medicineRepository;
     private final S3Service s3Service;
     private final AlarmService alarmService;
+    private final CalendarService calendarService;  // 캘린더 리포지토리 추가
 
     @Transactional
     public MedicineCreateResponseDTO createMedicine(String username, MedicineCreateRequestDTO requestDto, MultipartFile file) {
@@ -83,6 +91,9 @@ public class MedicineService {
                 throw new CustomException(ErrorCode.INVALID_INPUT_VALUE);
             }
         }
+
+        // 날짜별 Calendar 엔티티 생성
+        calendarService.createCalendarForMedicine(savedMedicine, requestDto.getStartDate(), requestDto.getDuration());
 
         return MedicineMapper.toMedicineCreateResponseDTO(savedMedicine);
     }
