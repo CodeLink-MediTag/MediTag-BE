@@ -25,6 +25,7 @@ public class MedicineGetDateResponseDTO {
         private String medicineName;  // 약 이름
         private String characteristic;  // 약 특징
         private String imageUrl;  // 약 이미지 URL
+        private boolean prescribed; // 처방약 여부
         private List<AlarmDTO> alarms;  // 알림 시간 리스트
     }
 
