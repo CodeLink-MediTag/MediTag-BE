@@ -15,7 +15,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class Record extends BaseTimeEntity {
+public class Recording extends BaseTimeEntity { //기본 속성과 이름이 겹처서 자꾸 에러남. Record=> Recording
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
