@@ -21,7 +21,9 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -77,5 +79,14 @@ public class RecordService {
         } catch (IOException e) {
             throw new RuntimeException("파일 업로드 중 오류 발생", e);
         }
+    }
+    public List<RecordingResponseDTO> getAllRecordings(String username) {
+        Member member = memberRepository.findByUsername(username)
+                .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_NOT_FOUND));
+        List<Recording> recordings = recordRepository.findByMemberOrderByRecordingTimeDesc(member);
+
+        return recordings.stream()
+                .map(RecordMapper::toResponseDTO)
+                .collect(Collectors.toList());
     }
 }
