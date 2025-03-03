@@ -1,8 +1,6 @@
 package com.example.meditag.domain.medicine.service;
 
-import com.example.meditag.domain.alarm.dto.response.AlarmResponseDTO;
 import com.example.meditag.domain.alarm.entity.Alarm;
-import com.example.meditag.domain.alarm.mapper.AlarmMapper;
 import com.example.meditag.domain.alarm.repository.AlarmRepository;
 import com.example.meditag.domain.alarm.service.AlarmService;
 import com.example.meditag.domain.calendar.service.CalendarService;
