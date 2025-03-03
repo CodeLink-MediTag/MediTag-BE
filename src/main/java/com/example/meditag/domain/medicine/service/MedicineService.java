@@ -1,8 +1,6 @@
 package com.example.meditag.domain.medicine.service;
 
-import com.example.meditag.domain.alarm.dto.response.AlarmResponseDTO;
 import com.example.meditag.domain.alarm.entity.Alarm;
-import com.example.meditag.domain.alarm.mapper.AlarmMapper;
 import com.example.meditag.domain.alarm.repository.AlarmRepository;
 import com.example.meditag.domain.alarm.service.AlarmService;
 import com.example.meditag.domain.calendar.service.CalendarService;
@@ -183,25 +181,6 @@ public class MedicineService {
                 .date(date)  // 요청된 날짜
                 .medicines(medicineDTOList)  // 해당 날짜에 복용해야 할 약 리스트
                 .build();
-    }
-
-    // 복용 여부 API
-    @Transactional
-    public AlarmResponseDTO toggleTaking (String username, Long medicineId, Long alarmId) {
-        Member member = memberRepository.findByUsername(username)
-                .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_NOT_FOUND));
-
-        Medicine medicine = medicineRepository.findById(medicineId)
-                .orElseThrow(() -> new CustomException(ErrorCode.MEDICINE_NOT_FOUND));
-
-        Alarm alarm = alarmRepository.findById(alarmId)
-                .orElseThrow(() -> new CustomException(ErrorCode.ALARM_NOT_FOUND));
-
-        alarm.toggleTaking();
-
-        alarmRepository.save(alarm);
-
-        return AlarmMapper.toAlarmResponseDTO(alarm);
     }
 
     // Presigned URL만 생성하여 반환하는 메서드 추가
