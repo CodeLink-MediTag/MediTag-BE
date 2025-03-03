@@ -185,25 +185,6 @@ public class MedicineService {
                 .build();
     }
 
-    // 복용 여부 API
-    @Transactional
-    public AlarmResponseDTO toggleTaking (String username, Long medicineId, Long alarmId) {
-        Member member = memberRepository.findByUsername(username)
-                .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_NOT_FOUND));
-
-        Medicine medicine = medicineRepository.findById(medicineId)
-                .orElseThrow(() -> new CustomException(ErrorCode.MEDICINE_NOT_FOUND));
-
-        Alarm alarm = alarmRepository.findById(alarmId)
-                .orElseThrow(() -> new CustomException(ErrorCode.ALARM_NOT_FOUND));
-
-        alarm.toggleTaking();
-
-        alarmRepository.save(alarm);
-
-        return AlarmMapper.toAlarmResponseDTO(alarm);
-    }
-
     // Presigned URL만 생성하여 반환하는 메서드 추가
     public String getPresignedUrl(String filename) {
         return s3Service.createPresignedUrl("test/" + filename);
