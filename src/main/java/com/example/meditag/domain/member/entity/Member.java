@@ -7,7 +7,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import com.example.meditag.domain.record.entity.Record;
+import com.example.meditag.domain.record.entity.Recording;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -45,7 +45,7 @@ public class Member extends BaseTimeEntity {
 
     //녹음 연관관계 매핑(일대다)
     @OneToMany(mappedBy = "member", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Record> records = new ArrayList<>();
+    private List<Recording> recordings = new ArrayList<>();
 
     //약 연관관계 매핑(일대다)
     @OneToMany(mappedBy = "member", cascade = CascadeType.ALL, orphanRemoval = true)
