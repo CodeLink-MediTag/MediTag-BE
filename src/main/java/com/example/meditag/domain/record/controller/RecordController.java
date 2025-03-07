@@ -1,6 +1,7 @@
 package com.example.meditag.domain.record.controller;
 
 import com.example.meditag.domain.auth.dto.CustomUserDetails;
+import com.example.meditag.domain.record.controller.api.RecordApi;
 import com.example.meditag.domain.record.dto.RecordingCreateRequestDTO;
 import com.example.meditag.domain.record.dto.RecordingResponseDTO;
 import com.example.meditag.domain.record.service.RecordService;
@@ -14,12 +15,12 @@ import org.springframework.web.multipart.MultipartFile;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/record")
+@RequestMapping("/api/records")
 @RequiredArgsConstructor
 
-public class RecordController {
+public class RecordController implements RecordApi {
+
     private final RecordService recordService;
-    private final S3Service s3Service;
 
 
     @PostMapping

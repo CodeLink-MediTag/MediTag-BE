@@ -1,6 +1,7 @@
 package com.example.meditag.domain.calendar.controller;
 
 import com.example.meditag.domain.auth.dto.CustomUserDetails;
+import com.example.meditag.domain.calendar.controller.api.CalendarApi;
 import com.example.meditag.domain.calendar.dto.response.CalendarGetDateResponseDTO;
 import com.example.meditag.domain.calendar.service.CalendarService;
 import lombok.RequiredArgsConstructor;
@@ -14,7 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/calendar")
 @RequiredArgsConstructor
-public class CalendarController {
+public class CalendarController implements CalendarApi {
 
     private final CalendarService calendarService;
 

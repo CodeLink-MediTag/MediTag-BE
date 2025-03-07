@@ -1,5 +1,6 @@
 package com.example.meditag.domain.member.controller;
 
+import com.example.meditag.domain.member.controller.api.MemberApi;
 import com.example.meditag.domain.member.dto.request.RegisterDTO;
 import com.example.meditag.domain.member.service.RegisterService;
 import jakarta.validation.Valid;
@@ -10,7 +11,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/member")
-public class MemberController {
+public class MemberController implements MemberApi {
 
     private final RegisterService registerService;
 

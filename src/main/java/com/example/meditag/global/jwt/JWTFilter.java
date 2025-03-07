@@ -26,9 +26,14 @@ public class JWTFilter extends OncePerRequestFilter { // 한 요청당 한 번�
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
 
-        // 회원가입 요청과 로그인 요청에 대해서는 JWT 검증을 제외
-        if (request.getRequestURI().startsWith("/api/member/register") || request.getRequestURI().startsWith("/api/auth/login") || request.getRequestURI().startsWith("/login")) {
-            filterChain.doFilter(request, response); // 필터를 건너뜀
+        String path = request.getRequestURI();
+        if (path.startsWith("/api/member/register")
+                || path.startsWith("/api/auth/login")
+                || path.startsWith("/login")
+                || path.startsWith("/swagger-ui")
+                || path.startsWith("/v3/api-docs")
+                || path.equals("/swagger-ui.html")) {
+            filterChain.doFilter(request, response);
             return;
         }
 
