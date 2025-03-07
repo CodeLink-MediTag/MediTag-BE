@@ -58,74 +58,75 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
-    // 🔹 Spring Security의 필터 체인을 설정하는 메서드
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 
-        // 🔹 CORS 설정 (프론트엔드와의 통신 허용)
-        http.cors((corsCustomizer -> corsCustomizer.configurationSource(new CorsConfigurationSource() {
+        // CORS 설정
+        http.cors(corsCustomizer -> corsCustomizer.configurationSource(new CorsConfigurationSource() {
             @Override
             public CorsConfiguration getCorsConfiguration(HttpServletRequest request) {
                 CorsConfiguration configuration = new CorsConfiguration();
-
-                // 허용할 도메인 설정 (React 프론트엔드에서 요청 허용)
                 configuration.setAllowedOrigins(Collections.singletonList("http://localhost:3000"));
-
-                // 모든 HTTP 메서드 허용 (GET, POST, PUT, DELETE 등)
                 configuration.setAllowedMethods(Collections.singletonList("*"));
-
-                // 인증 정보를 요청과 함께 전달할 수 있도록 설정
                 configuration.setAllowCredentials(true);
-
-                // 모든 헤더 허용
                 configuration.setAllowedHeaders(Collections.singletonList("*"));
-
-                // CORS 설정을 캐싱하는 시간 (초 단위)
                 configuration.setMaxAge(3600L);
-
-                // 클라이언트가 확인할 수 있도록 Authorization 헤더를 노출
                 configuration.setExposedHeaders(Collections.singletonList("Authorization"));
-
                 return configuration;
             }
-        })));
+        }));
 
-        // 🔹 CSRF 보호 비활성화 (JWT 방식에서는 CSRF 필요 없음)
-        http.csrf((auth) -> auth.disable());
+        // CSRF 비활성화
+        http.csrf(csrf -> csrf.disable());
 
-        // 🔹 Form 로그인 방식 비활성화 (Spring Security 기본 로그인 폼 제거)
-        http.formLogin((auth) -> auth.disable());
+        // 로그인 설정 (커스텀 로그인 페이지)
+        http.formLogin(form -> form
+                .loginPage("/login")  // 커스텀 로그인 페이지
+                .permitAll()
+        );
 
-        // 🔹 HTTP Basic 인증 비활성화 (기본 인증 방식 제거)
-        http.httpBasic((auth) -> auth.disable());
+        // HTTP Basic 인증 비활성화
+        http.httpBasic(httpBasic -> httpBasic.disable());
 
+        // OAuth2 로그인 설정
+        http.oauth2Login(oauth2 -> oauth2
+                .userInfoEndpoint(userInfo -> userInfo.userService(customOAuth2UserService))
+                .successHandler(customSuccessHandler)
+        );
 
-        //oauth2 로그인 설정
-         http.oauth2Login(oauth2 -> oauth2
-                 .userInfoEndpoint(userInfo -> userInfo
-                         .userService(customOAuth2UserService))
-                     .successHandler(customSuccessHandler)
-         );
-
-        // 🔹 경로별 접근 권한 설정
-        http.authorizeHttpRequests((auth) -> auth
-                .requestMatchers("/api/auth/login", "/", "/api/member/register", "/login/oauth2/code/naver", "/login/oauth2/code/kakao", "/login").permitAll()
+        // 경로별 권한 설정
+        // SecurityConfig.java의 filterChain 메소드 내부 수정
+        http.authorizeHttpRequests(auth -> auth
+                .requestMatchers(
+                        "/api/auth/login",
+                        "/",
+                        "/api/member/register",
+                        "/login/oauth2/code/naver",
+                        "/login/oauth2/code/kakao",
+                        "/login",
+                        "/swagger-ui/**",
+                        "/swagger-ui.html",
+                        "/v3/api-docs/**",
+                        "/api-docs/**",
+                        "/swagger-resources/**"
+                )
+                .permitAll()
                 .requestMatchers("/admin").hasRole("ADMIN")
                 .anyRequest().authenticated()
         );
 
-        // 🔹 JWTFilter를 LoginFilter 이전에 실행되도록 등록
-        http.addFilterBefore(new JWTFilter(jwtUtil), LoginFilter.class);
+        // JWTFilter를 LoginFilter 이전에 실행되도록 설정
+        http.addFilterBefore(new JWTFilter(jwtUtil), UsernamePasswordAuthenticationFilter.class);
 
-        // 🔹 로그인 요청을 처리하는 LoginFilter 등록
-        //    LoginFilter는 AuthenticationManager와 JWTUtil을 필요로 함
-        http.addFilterAt(new LoginFilter(authenticationManager(authenticationConfiguration), jwtUtil), UsernamePasswordAuthenticationFilter.class);
+        // JWTFilter 등록을 수정한 부분
+        // LoginFilter를 JWTFilter 앞에 설정하여 로그인 후 토큰 검증이 가능하게 함
+        http.addFilterAfter(new LoginFilter(authenticationManager(authenticationConfiguration), jwtUtil), JWTFilter.class);
 
-        // 🔹 세션을 사용하지 않도록 설정 (JWT 방식에서는 STATELESS 모드 사용)
-        http.sessionManagement((session) -> session
-                .sessionCreationPolicy(SessionCreationPolicy.STATELESS));
+        // 세션을 사용하지 않도록 설정
+        http.sessionManagement(session -> session
+                .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+        );
 
-        // 🔹 설정이 완료된 HttpSecurity 객체를 반환하여 Spring Security에 적용
         return http.build();
     }
 }
