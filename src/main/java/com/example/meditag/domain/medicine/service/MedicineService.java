@@ -2,8 +2,6 @@ package com.example.meditag.domain.medicine.service;
 
 import com.example.meditag.domain.alarm.entity.Alarm;
 import com.example.meditag.domain.alarm.repository.AlarmRepository;
-import com.example.meditag.domain.alarm.service.AlarmService;
-import com.example.meditag.domain.calendar.service.CalendarService;
 import com.example.meditag.domain.medicine.dto.request.MedicineCreateRequestDTO;
 import com.example.meditag.domain.medicine.dto.response.MedicineResponseDTO;
 import com.example.meditag.domain.medicine.dto.response.MedicineGetDateResponseDTO;
@@ -26,6 +24,8 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.io.OutputStream;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -44,8 +44,6 @@ public class MedicineService {
     private final CalendarRepository calendarRepository;
     private final AlarmRepository alarmRepository;
     private final S3Service s3Service;
-    private final AlarmService alarmService;
-    private final CalendarService calendarService;
 
     // 복약 알림 등록 API
     @Transactional
@@ -82,25 +80,56 @@ public class MedicineService {
 
         Medicine savedMedicine = medicineRepository.save(medicine);
 
-        // 알람 생성 로직 추가
-        if (requestDto.isPrescribed()) {
-            // 처방약의 경우 dosageTimes 사용 (아침, 점심, 저녁 등)
-            if (requestDto.getDosageTimes() != null && !requestDto.getDosageTimes().isEmpty()) {
-                alarmService.createAlarmsForPrescribedMedicine(savedMedicine, requestDto.getDosageTimes(), requestDto.getAlarmTimes());
+        // 복용 날짜(Calendar) 생성
+        List<Calendar> calendarList = new ArrayList<>();
+        LocalDate startDate = requestDto.getStartDate();
+        int duration = requestDto.getDuration();
+
+        for (int i = 0; i < duration; i++) {
+            LocalDate medicineDate = startDate.plusDays(i);
+            Calendar calendar = Calendar.builder()
+                    .date(medicineDate)
+                    .medicine(savedMedicine)
+                    .build();
+            calendarList.add(calendar);
+        }
+        calendarRepository.saveAll(calendarList); // 캘린더 저장
+
+        // 알람(Alarm) 생성
+        List<Alarm> alarmList = new ArrayList<>();
+
+        for (Calendar calendar : calendarList) {
+            if (requestDto.isPrescribed()) {
+                // 🔥 사용자가 입력한 복용 시간 (`dosageTimes`) 기반으로 생성!
+                List<String> dosageTimes = requestDto.getDosageTimes(); // 예: ["점심", "저녁"]
+                List<LocalDateTime> alarmTimes = requestDto.getAlarmTimes(); // 예: ["13:00", "20:00"]
+
+                if (dosageTimes.size() != alarmTimes.size()) {
+                    throw new CustomException(ErrorCode.INVALID_INPUT_VALUE); // 크기가 맞지 않으면 예외 처리
+                }
+
+                for (int i = 0; i < dosageTimes.size(); i++) {
+                    Alarm alarm = Alarm.builder()
+                            .calendar(calendar)
+                            .dosageTime(dosageTimes.get(i)) // 사용자 입력 (점심, 저녁 등)
+                            .alarmTime(LocalDateTime.of(calendar.getDate(), LocalTime.from(alarmTimes.get(i)))) // 사용자가 입력한 시간
+                            .taking(false)
+                            .build();
+                    alarmList.add(alarm);
+                }
             } else {
-                throw new CustomException(ErrorCode.INVALID_INPUT_VALUE);
-            }
-        } else {
-            // 일반약의 경우 alarmTimes 사용 (구체적인 시간 목록)
-            if (requestDto.getAlarmTimes() != null && !requestDto.getAlarmTimes().isEmpty()) {
-                alarmService.createAlarmsForNormalMedicine(savedMedicine, requestDto.getAlarmTimes());
-            } else {
-                throw new CustomException(ErrorCode.INVALID_INPUT_VALUE);
+                // 일반약이면 사용자가 입력한 알람 시간 사용
+                for (LocalDateTime time : requestDto.getAlarmTimes()) {
+                    Alarm alarm = Alarm.builder()
+                            .calendar(calendar)
+                            .alarmTime(LocalDateTime.of(calendar.getDate(), LocalTime.from(time)))
+                            .taking(false)
+                            .build();
+                    alarmList.add(alarm);
+                }
             }
         }
-
-        // 날짜별 Calendar 엔티티 생성
-        calendarService.createCalendarForMedicine(savedMedicine, requestDto.getStartDate(), requestDto.getDuration());
+        alarmRepository.saveAll(alarmList); // 알람 저장
 
         return MedicineMapper.toMedicineResponseDTO(savedMedicine);
     }
@@ -140,23 +169,24 @@ public class MedicineService {
     // 특정 날짜 복약 정보 조회 API
     @Transactional
     public MedicineGetDateResponseDTO getMedicinesByDate(String username, String date) {
+        // 1. 회원 정보 조회
         Member member = memberRepository.findByUsername(username)
                 .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_NOT_FOUND));
 
-        // 해당 날짜에 복용해야 하는 약 정보 조회
+        // 2. 해당 날짜에 복용해야 하는 약 정보 조회
         List<Calendar> calendars = calendarRepository.findByMemberAndDate(member, LocalDate.parse(date));
 
         if (calendars.isEmpty()) {
             throw new CustomException(ErrorCode.MEDICINE_NOT_FOUND_FOR_DATE);
         }
 
-        // 해당 날짜에 복용해야 하는 약 리스트
+        // 3. 해당 날짜에 복용해야 하는 약 리스트
         List<MedicineGetDateResponseDTO.MedicineDTO> medicineDTOList = new ArrayList<>();
         for (Calendar calendar : calendars) {
             Medicine medicine = calendar.getMedicine();
 
-            // 알림 시간 조회
-            List<Alarm> alarms = alarmRepository.findByMedicineAndCalendar(medicine, calendar);
+            // 4. 알림 시간 조회
+            List<Alarm> alarms = alarmRepository.findByMedicineAndDate(medicine, LocalDate.parse(date));
 
             List<MedicineGetDateResponseDTO.AlarmDTO> alarmDTOs = alarms.stream()
                     .map(alarm -> MedicineGetDateResponseDTO.AlarmDTO.builder()
@@ -169,14 +199,13 @@ public class MedicineService {
                     .medicineName(medicine.getName())
                     .characteristic(medicine.getCharacteristic())
                     .imageUrl(medicine.getImageUrl())
-                    .prescribed(medicine.isPrescribed())
                     .alarms(alarmDTOs)
                     .build();
 
             medicineDTOList.add(medicineDTO);
         }
 
-        // 최종 DTO 반환
+        // 5. 최종 DTO 반환
         return MedicineGetDateResponseDTO.builder()
                 .date(date)  // 요청된 날짜
                 .medicines(medicineDTOList)  // 해당 날짜에 복용해야 할 약 리스트

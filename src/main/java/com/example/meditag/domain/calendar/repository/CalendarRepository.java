@@ -14,6 +14,4 @@ import java.util.List;
 public interface CalendarRepository extends JpaRepository<Calendar, Long> {
     @Query("SELECT c FROM Calendar c WHERE c.medicine.member = :member AND c.date = :date")
     List<Calendar> findByMemberAndDate(@Param("member") Member member, @Param("date") LocalDate date);
-
-
 }

@@ -51,10 +51,6 @@ public class Medicine extends BaseTimeEntity {
     @JoinColumn(name = "member_id")
     private Member member;
 
-    //알림 연관관계 매핑 (일대다)
-    @OneToMany(mappedBy = "medicine", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Alarm> alarms = new ArrayList<>();
-
     //날짜 연관관계 매핑 (일대다)
     @OneToMany(mappedBy = "medicine", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Calendar> calendars = new ArrayList<>();
