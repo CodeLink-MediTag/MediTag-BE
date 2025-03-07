@@ -1,6 +1,5 @@
 package com.example.meditag.domain.calendar.dto.response;
 
-import com.example.meditag.domain.medicine.dto.response.MedicineGetDateResponseDTO;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
