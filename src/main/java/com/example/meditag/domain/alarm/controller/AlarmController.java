@@ -1,5 +1,6 @@
 package com.example.meditag.domain.alarm.controller;
 
+import com.example.meditag.domain.alarm.controller.api.AlarmApi;
 import com.example.meditag.domain.alarm.service.AlarmService;
 import com.example.meditag.domain.auth.dto.CustomUserDetails;
 import lombok.RequiredArgsConstructor;
@@ -13,7 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/medicines")
 @RequiredArgsConstructor
-public class AlarmController {
+public class AlarmController implements AlarmApi {
 
     private final AlarmService alarmService;
 
