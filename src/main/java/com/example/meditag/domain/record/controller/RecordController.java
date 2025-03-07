@@ -7,6 +7,7 @@ import com.example.meditag.domain.record.dto.RecordingResponseDTO;
 import com.example.meditag.domain.record.service.RecordService;
 import com.example.meditag.global.aws.S3Service;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -23,7 +24,7 @@ public class RecordController implements RecordApi {
     private final RecordService recordService;
 
 
-    @PostMapping
+    @PostMapping(consumes = {MediaType.MULTIPART_FORM_DATA_VALUE})
     public ResponseEntity<String> createRecord(@AuthenticationPrincipal CustomUserDetails customUserDetails,
                                                  @RequestPart(value = "data") RecordingCreateRequestDTO requestDTO,
                                                  @RequestPart(value = "file", required = false) MultipartFile file) {
