@@ -4,6 +4,8 @@ import com.example.meditag.domain.alarm.dto.response.AlarmResponseDTO;
 import com.example.meditag.domain.alarm.entity.Alarm;
 import com.example.meditag.domain.alarm.mapper.AlarmMapper;
 import com.example.meditag.domain.alarm.repository.AlarmRepository;
+import com.example.meditag.domain.calendar.entity.Calendar;
+import com.example.meditag.domain.calendar.repository.CalendarRepository;
 import com.example.meditag.domain.medicine.entity.Medicine;
 import com.example.meditag.domain.medicine.repository.MedicineRepository;
 import com.example.meditag.domain.member.entity.Member;
@@ -14,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
@@ -25,14 +28,25 @@ public class AlarmService {
     private final MemberRepository memberRepository;
     private final MedicineRepository medicineRepository;
     private final AlarmRepository alarmRepository;
+    private final CalendarRepository calendarRepository;
+
+    // 처방약 알림 만들기 - 날짜별로 알람 생성
+    @Transactional
+    public void createAlarmsForPrescribedMedicine(Medicine medicine, List<String> dosageTimes, List<LocalDateTime> alarmTimes, LocalDate startDate, int duration) {
+    }
+
+    // 일반약 알림 만들기 - 날짜별로 알람 생성
+    @Transactional
+    public void createAlarmsForNormalMedicine(Medicine medicine, List<LocalDateTime> alarmTimes, LocalDate startDate, int duration) {
+    }
 
     // 복용 여부 API
     @Transactional
     public AlarmResponseDTO toggleTaking (String username, Long medicineId, Long alarmId) {
-        Member member = memberRepository.findByUsername(username)
+        memberRepository.findByUsername(username)
                 .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_NOT_FOUND));
 
-        Medicine medicine = medicineRepository.findById(medicineId)
+        medicineRepository.findById(medicineId)
                 .orElseThrow(() -> new CustomException(ErrorCode.MEDICINE_NOT_FOUND));
 
         Alarm alarm = alarmRepository.findById(alarmId)
@@ -43,35 +57,5 @@ public class AlarmService {
         alarmRepository.save(alarm);
 
         return AlarmMapper.toAlarmResponseDTO(alarm);
-    }
-
-    // 처방약 알림 만들기
-    @Transactional
-    public void createAlarmsForPrescribedMedicine(Medicine medicine, List<String> dosageTimes, List<LocalDateTime> alarmTimes) {
-        // dosageTimes와 alarmTimes의 크기가 일치하는지 확인
-        if (dosageTimes.size() != alarmTimes.size()) {
-            throw new CustomException(ErrorCode.INVALID_INPUT_VALUE);
-        }
-
-        // dosageTimes와 alarmTimes에 대해 반복하면서 알람 생성
-        for (int i = 0; i < dosageTimes.size(); i++) {
-            String dosageTime = dosageTimes.get(i);
-            LocalDateTime alarmTime = alarmTimes.get(i);
-
-            Alarm alarm = AlarmMapper.toAlarmsForPrescribedMedicine(medicine, dosageTime, alarmTime);
-
-            alarmRepository.save(alarm);  // 알람 저장
-        }
-    }
-
-    // 일반약 알림 만들기
-    @Transactional
-    public void createAlarmsForNormalMedicine(Medicine medicine, List<LocalDateTime> alarmTimes) {
-        for (LocalDateTime alarmTime : alarmTimes) {
-
-            Alarm alarm = AlarmMapper.toAlarmsForNormalMedicine(medicine, alarmTime);
-
-            alarmRepository.save(alarm);
-        }
     }
 }

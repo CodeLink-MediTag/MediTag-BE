@@ -5,14 +5,12 @@ import com.example.meditag.domain.alarm.repository.AlarmRepository;
 import com.example.meditag.domain.calendar.dto.response.CalendarGetDateResponseDTO;
 import com.example.meditag.domain.calendar.entity.Calendar;
 import com.example.meditag.domain.calendar.repository.CalendarRepository;
-import com.example.meditag.domain.medicine.dto.response.MedicineGetDateResponseDTO;
 import com.example.meditag.domain.medicine.entity.Medicine;
 import com.example.meditag.domain.member.entity.Member;
 import com.example.meditag.domain.member.repository.MemberRepository;
 import com.example.meditag.global.error.exception.CustomException;
 import com.example.meditag.global.error.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,25 +26,6 @@ public class CalendarService {
     private final CalendarRepository calendarRepository;
     private final MemberRepository memberRepository;
     private final AlarmRepository alarmRepository;
-
-    // 복약 날짜에 맞춰 캘린더 자동 생성
-    @Transactional
-    public void createCalendarForMedicine(Medicine medicine, LocalDate startDate, int duration) {
-        List<Calendar> calendarList = new ArrayList<>();
-
-        // 복용 시작 날짜부터 duration 만큼 날짜를 계산하여 Calendar 엔티티 생성
-        for (int i = 0; i < duration; i++) {
-            LocalDate medicineDate = startDate.plusDays(i);  // 시작일로부터 duration 만큼 날짜 생성
-            Calendar calendar = Calendar.builder()
-                    .date(medicineDate) // 날짜를 String 형식으로 저장
-                    .medicine(medicine)
-                    .build();
-            calendarList.add(calendar);
-        }
-
-        // 생성한 캘린더 리스트를 DB에 저장
-        calendarRepository.saveAll(calendarList);
-    }
 
     //캘린더에서 특정 날짜에 복약 정보 조회
     @Transactional
@@ -66,7 +45,7 @@ public class CalendarService {
             Medicine medicine = calendar.getMedicine();
 
             // 알림 시간 조회
-            List<Alarm> alarms = alarmRepository.findByMedicineAndCalendar(medicine, calendar);
+            List<Alarm> alarms = alarmRepository.findByMedicineAndDate(medicine, LocalDate.parse(date));
 
             List<CalendarGetDateResponseDTO.AlarmDTO> alarmDTOs = alarms.stream()
                     .map(alarm -> CalendarGetDateResponseDTO.AlarmDTO.builder()

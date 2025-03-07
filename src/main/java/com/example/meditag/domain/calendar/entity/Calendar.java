@@ -1,5 +1,6 @@
 package com.example.meditag.domain.calendar.entity;
 
+import com.example.meditag.domain.alarm.entity.Alarm;
 import com.example.meditag.domain.medicine.entity.Medicine;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -8,6 +9,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Getter
@@ -27,4 +30,7 @@ public class Calendar {
     @ManyToOne
     @JoinColumn(name = "medicine_id") // 외래키 이름 지정
     private Medicine medicine;
+
+    @OneToMany(mappedBy = "calendar", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Alarm> alarms = new ArrayList<>();
 }
