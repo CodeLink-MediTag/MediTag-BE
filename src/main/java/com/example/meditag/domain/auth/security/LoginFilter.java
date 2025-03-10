@@ -8,9 +8,11 @@ import com.example.meditag.global.jwt.JWTUtil;
 import com.example.meditag.global.jwt.TokenDTO;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationServiceException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -81,13 +83,15 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter { // 로�
         log.info("[LoginFilter/successfulAuthentication] 4. 인증된 사용자 권한 가져오기: {}", role);
 
         // JWT 토큰 생성
-        String token = jwtUtil.createJwt(username, role, 60 * 60 * 60L);
+        String access = jwtUtil.createJwt(username, role, 60 * 60 * 60L);
+        String refresh = jwtUtil.createJwt(username, role, 60 * 60 * 60 * 24L);
 
-        log.info("[LoginFilter/successfulAuthentication] 5. JWT 토큰 생성: {}", token);
+        log.info("[LoginFilter/successfulAuthentication] 5. JWT 토큰 생성: {}", access, refresh);
 
         // TokenDTO 생성 및 JSON 응답
         TokenDTO tokenDTO = TokenDTO.builder()
-                .accessToken(token)
+                .accessToken(access)
+                .refreshToken(refresh)
                 .build();
 
         log.info("[LoginFilter/successfulAuthentication] 6. JWT TokenDTO 생성: {}", tokenDTO);
@@ -98,7 +102,9 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter { // 로�
         new ObjectMapper().writeValue(response.getWriter(), tokenDTO);
 
         // 응답 헤더에 JWT 추가
-        response.addHeader("Authorization", "Bearer " + token);
+        response.addHeader("Authorization", "Bearer " + access);
+        response.addCookie(createCookie("refresh", refresh));
+        response.setStatus(HttpStatus.OK.value());
 
         log.info("[LoginFilter/successfulAuthentication] 7. JWT 토큰 HTTP 헤더에 추가 완료");
     }
@@ -119,5 +125,16 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter { // 로�
 
         // JSON 응답 반환
         new ObjectMapper().writeValue(response.getWriter(), errorResponse);
+    }
+
+    private Cookie createCookie(String key, String value) {
+
+        Cookie cookie = new Cookie(key, value);
+        cookie.setMaxAge(24*60*60);
+        //cookie.setSecure(true);
+        //cookie.setPath("/");
+        cookie.setHttpOnly(true);
+
+        return cookie;
     }
 }
