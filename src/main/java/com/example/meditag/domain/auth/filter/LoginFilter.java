@@ -5,7 +5,7 @@ import com.example.meditag.domain.auth.dto.LoginDTO;
 import com.example.meditag.domain.jwt.repository.RefreshTokenRedisRepository;
 import com.example.meditag.global.error.ErrorResponse;
 import com.example.meditag.global.error.exception.ErrorCode;
-import com.example.meditag.global.jwt.JWTUtil;
+import com.example.meditag.domain.jwt.filter.JWTUtil;
 import com.example.meditag.domain.jwt.dto.TokenDTO;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
