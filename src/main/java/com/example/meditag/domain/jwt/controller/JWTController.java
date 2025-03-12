@@ -1,0 +1,122 @@
+    package com.example.meditag.domain.jwt.controller;
+
+    import com.example.meditag.domain.jwt.controller.api.JWTApi;
+    import com.example.meditag.domain.jwt.dto.TokenDTO;
+    import com.example.meditag.domain.jwt.repository.RefreshTokenRedisRepository;
+    import com.example.meditag.domain.jwt.filter.JWTUtil;
+    import jakarta.servlet.http.Cookie;
+    import jakarta.servlet.http.HttpServletRequest;
+    import jakarta.servlet.http.HttpServletResponse;
+    import lombok.RequiredArgsConstructor;
+    import lombok.extern.slf4j.Slf4j;
+    import org.springframework.http.HttpStatus;
+    import org.springframework.http.ResponseEntity;
+    import org.springframework.web.bind.annotation.PostMapping;
+    import org.springframework.web.bind.annotation.RequestMapping;
+    import org.springframework.web.bind.annotation.RestController;
+
+    @Slf4j
+    @RestController
+    @RequestMapping("/api/jwt")
+    @RequiredArgsConstructor
+    public class JWTController implements JWTApi {
+
+        private final JWTUtil jwtUtil;
+
+        private final RefreshTokenRedisRepository refreshTokenRedisRepository;
+
+        // 엑세스 토큰 만료 시 리프레시 토큰을 통해 새로 생성하기
+        @PostMapping("/reissue")
+        public ResponseEntity<TokenDTO> reissue(HttpServletRequest request, HttpServletResponse response) {
+            // 리프레시 토큰 가져오기 (쿠키 또는 헤더에서)
+            String refreshToken = extractRefreshToken(request);
+
+            // 리프레시 토큰이 없으면 오류 응답
+            if (refreshToken == null) {
+                log.info("[AuthController/reissue] 리프레시 토큰을 찾을 수 없음");
+                return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+            }
+
+            // 만료 여부 확인
+            if (jwtUtil.isExpired(refreshToken)) {
+                log.info("[AuthController/reissue] 리프레시 토큰이 만료됨");
+                return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
+            }
+
+            // 사용자 정보 가져오기
+            String username = jwtUtil.getUsername(refreshToken);
+
+            // 역할 정보 설정 (기본값 사용)
+            String role = "ROLE_USER";
+
+            // 새로운 액세스 토큰 생성
+            String newAccessToken = jwtUtil.createAccessToken(username, role, 60 * 60 * 1000L); // 1시간
+            String newRefreshToken = jwtUtil.createRefreshToken(username, 60 * 60 * 24 * 30 * 1000L); // 30일
+
+            // RefreshToken 저장 (Redis)
+            refreshTokenRedisRepository.saveRefreshToken(username, newRefreshToken);
+
+            // 새로운 TokenDTO 객체 생성
+            TokenDTO tokenDTO = TokenDTO.builder()
+                    .accessToken(newAccessToken)
+                    .refreshToken(newRefreshToken)
+                    .build();
+
+            // Authorization 헤더에 추가
+            response.addHeader("Authorization", "Bearer " + newAccessToken);
+
+            // 쿠키에 리프레시 토큰 추가
+            Cookie refreshCookie = createCookie("refresh", newRefreshToken);
+            response.addCookie(refreshCookie);
+
+            log.info("[AuthController/reissue] 토큰 재발급 성공 - 사용자: {}", username);
+            return new ResponseEntity<>(tokenDTO, HttpStatus.OK);
+        }
+
+        /**
+         * 요청에서 리프레시 토큰을 추출하는 메서드
+         */
+        private String extractRefreshToken(HttpServletRequest request) {
+            // 1. 쿠키에서 리프레시 토큰 찾기
+            Cookie[] cookies = request.getCookies();
+            if (cookies != null) {
+                for (Cookie cookie : cookies) {
+                    if ("refresh".equals(cookie.getName())) {
+                        return cookie.getValue();
+                    }
+                }
+            }
+
+            // 2. Authorization 헤더에서도 확인
+            String authHeader = request.getHeader("Authorization");
+            if (authHeader != null && authHeader.startsWith("Bearer ")) {
+                String token = authHeader.substring(7); // "Bearer " 이후의 문자열
+
+                // 토큰이 유효하고 사용자 정보가 포함되어 있으면 사용
+                if (!jwtUtil.isExpired(token) && jwtUtil.getUsername(token) != null) {
+                    return token;
+                }
+            }
+
+            // 3. 요청 파라미터에서 확인
+            String tokenParam = request.getParameter("refreshToken");
+            if (tokenParam != null && !tokenParam.isEmpty()) {
+                return tokenParam;
+            }
+
+            // 리프레시 토큰을 찾지 못함
+            return null;
+        }
+
+        private Cookie createCookie(String key, String value) {
+            Cookie cookie = new Cookie(key, value);
+            cookie.setMaxAge(24 * 60 * 60); // 1일 동안 유지
+            cookie.setPath("/"); // 모든 경로에서 접근 가능하도록 설정
+            cookie.setHttpOnly(true); // JavaScript에서 접근 불가능하도록 설정 (보안 강화)
+
+            // HTTPS 환경이 아니라면 secure 설정 주석 처리
+            // cookie.setSecure(true);
+
+            return cookie;
+        }
+    }

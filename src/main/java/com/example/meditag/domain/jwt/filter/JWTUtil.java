@@ -1,4 +1,4 @@
-package com.example.meditag.global.jwt;
+package com.example.meditag.domain.jwt.filter;
 
 import io.jsonwebtoken.Jwts;
 import lombok.extern.slf4j.Slf4j;
@@ -8,7 +8,6 @@ import org.springframework.stereotype.Component;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
-import java.util.Base64;
 import java.util.Date;
 
 @Slf4j
@@ -79,7 +78,7 @@ public class JWTUtil {
     }
 
     // 새로운 JWT 생성 (username, role, 만료 시간 지정)
-    public String createJwt(String username, String role, Long expiredMs) {
+    public String createAccessToken(String username, String role, Long expiredMs) {
         log.info("[JWTUtil/createJwt] 새로운 JWT 생성, username: {}, role: {}, 만료 시간(ms): {}", username, role, expiredMs);
         return Jwts.builder()
                 .claim("username", username) // username 클레임 추가
@@ -88,6 +87,17 @@ public class JWTUtil {
                 .expiration(new Date(System.currentTimeMillis() + expiredMs)) // 만료 시간 설정
                 .signWith(secretKey) // 서명 추가
                 .compact(); // 토큰 생성 및 반환
+    }
+
+    // Refresh Token
+    public String createRefreshToken(String username, Long expiredMs) {
+        log.info("[JWTUtil/createRefreshToken] 새로운 리프레시 토큰 생성, username: {}, 만료 시간(ms): {}", username, expiredMs);
+        return Jwts.builder()
+                .claim("username", username) // 리프레시 토큰은 일반적으로 username만 저장
+                .issuedAt(new Date(System.currentTimeMillis()))
+                .expiration(new Date(System.currentTimeMillis() + expiredMs)) // 리프레시 토큰 만료 시간
+                .signWith(secretKey)
+                .compact();
     }
 }
 

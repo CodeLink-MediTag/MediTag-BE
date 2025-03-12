@@ -1,16 +1,19 @@
-package com.example.meditag.domain.auth.security;
+package com.example.meditag.domain.auth.filter;
 
 import com.example.meditag.domain.auth.dto.CustomUserDetails;
 import com.example.meditag.domain.auth.dto.LoginDTO;
+import com.example.meditag.domain.jwt.repository.RefreshTokenRedisRepository;
 import com.example.meditag.global.error.ErrorResponse;
 import com.example.meditag.global.error.exception.ErrorCode;
-import com.example.meditag.global.jwt.JWTUtil;
-import com.example.meditag.global.jwt.TokenDTO;
+import com.example.meditag.domain.jwt.filter.JWTUtil;
+import com.example.meditag.domain.jwt.dto.TokenDTO;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationServiceException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -28,11 +31,13 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter { // 로�
 
     private final AuthenticationManager authenticationManager; // 인증을 담당하는 매니저
     private final JWTUtil jwtUtil; // JWT 유틸리티 클래스
+    private final RefreshTokenRedisRepository refreshTokenRedisRepository;
 //    private final CustomAuthenticationEntryPoint authenticationEntryPoint; // 예외 처리 담당
 
-    public LoginFilter(AuthenticationManager authenticationManager, JWTUtil jwtUtil) {
+    public LoginFilter(AuthenticationManager authenticationManager, JWTUtil jwtUtil, RefreshTokenRedisRepository refreshTokenRedisRepository) {
         this.authenticationManager = authenticationManager;
         this.jwtUtil = jwtUtil;
+        this.refreshTokenRedisRepository = refreshTokenRedisRepository;
 //        this.authenticationEntryPoint = authenticationEntryPoint;
         setFilterProcessesUrl("/api/auth/login");
         log.info("[LoginFilter] LoginFilter 생성자 주입");
@@ -81,27 +86,49 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter { // 로�
         log.info("[LoginFilter/successfulAuthentication] 4. 인증된 사용자 권한 가져오기: {}", role);
 
         // JWT 토큰 생성
-        String token = jwtUtil.createJwt(username, role, 60 * 60 * 60L);
+        String access = jwtUtil.createAccessToken(username, role, 60 * 60 * 1000L);
+        String refresh = jwtUtil.createRefreshToken(username, 60 * 60 * 60 * 1000L);
 
-        log.info("[LoginFilter/successfulAuthentication] 5. JWT 토큰 생성: {}", token);
+        log.info("[LoginFilter/successfulAuthentication] 5. JWT 토큰 생성 - Access: {}, Refresh: {}", access, refresh);
+
+        // RefreshToken 저장 (Redis)
+        refreshTokenRedisRepository.saveRefreshToken(username, refresh);
 
         // TokenDTO 생성 및 JSON 응답
         TokenDTO tokenDTO = TokenDTO.builder()
-                .accessToken(token)
+                .accessToken(access)
+                .refreshToken(refresh)
                 .build();
 
         log.info("[LoginFilter/successfulAuthentication] 6. JWT TokenDTO 생성: {}", tokenDTO);
 
-        // JSON 응답 설정 (반환값)
+        // 응답 헤더 설정
         response.setContentType("application/json");
         response.setCharacterEncoding("UTF-8");
+        response.setStatus(HttpStatus.OK.value());
+        response.addHeader("Authorization", "Bearer " + access);
+
+        // 리프레시 토큰을 쿠키에 추가
+        Cookie refreshTokenCookie = createCookie("refresh", refresh);
+
+        // JSON 응답 반환
         new ObjectMapper().writeValue(response.getWriter(), tokenDTO);
 
-        // 응답 헤더에 JWT 추가
-        response.addHeader("Authorization", "Bearer " + token);
-
-        log.info("[LoginFilter/successfulAuthentication] 7. JWT 토큰 HTTP 헤더에 추가 완료");
+        log.info("[LoginFilter/successfulAuthentication] 7. JWT 토큰 HTTP 헤더 및 쿠키 설정 완료");
     }
+
+    private Cookie createCookie(String key, String value) {
+        Cookie cookie = new Cookie(key, value);
+        cookie.setMaxAge(24 * 60 * 60); // 1일 동안 유지
+        cookie.setPath("/"); // 모든 경로에서 접근 가능하도록 설정
+        cookie.setHttpOnly(true); // JavaScript에서 접근 불가능하도록 설정 (보안 강화)
+
+        // HTTPS 환경이 아니라면 secure 설정 주석 처리
+        // cookie.setSecure(true);
+
+        return cookie;
+    }
+
 
     // 로그인 실패 시 실행되는 메서드
     @Override

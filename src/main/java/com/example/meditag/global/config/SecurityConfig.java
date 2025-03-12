@@ -1,10 +1,12 @@
 package com.example.meditag.global.config;
 
+import com.example.meditag.domain.jwt.repository.RefreshTokenRedisRepository;
 import com.example.meditag.domain.oauth2.hendler.CustomSuccessHandler;
 import com.example.meditag.domain.oauth2.service.CustomOAuth2UserService;
-import com.example.meditag.global.jwt.JWTFilter;
-import com.example.meditag.global.jwt.JWTUtil;
-import com.example.meditag.domain.auth.security.LoginFilter;
+import com.example.meditag.domain.jwt.filter.JWTFilter;
+import com.example.meditag.domain.jwt.filter.JWTUtil;
+import com.example.meditag.domain.auth.filter.LoginFilter;
+import com.example.meditag.domain.auth.filter.CustomLogoutFilter;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -36,14 +38,17 @@ public class SecurityConfig {
 
     private final CustomSuccessHandler customSuccessHandler;
 
+    private final RefreshTokenRedisRepository refreshTokenRedisRepository;
+
 
 
     // 🔹 생성자를 통해 AuthenticationConfiguration과 JWTUtil을 주입받음
-    public SecurityConfig(AuthenticationConfiguration authenticationConfiguration, JWTUtil jwtUtil, CustomOAuth2UserService customOAuth2UserService, CustomSuccessHandler customSuccessHandler) {
+    public SecurityConfig(AuthenticationConfiguration authenticationConfiguration, JWTUtil jwtUtil, CustomOAuth2UserService customOAuth2UserService, CustomSuccessHandler customSuccessHandler, RefreshTokenRedisRepository refreshTokenRedisRepository) {
         this.authenticationConfiguration = authenticationConfiguration;
         this.jwtUtil = jwtUtil;
         this.customOAuth2UserService = customOAuth2UserService;
         this.customSuccessHandler = customSuccessHandler;
+        this.refreshTokenRedisRepository = refreshTokenRedisRepository;
     }
 
     // 🔹 AuthenticationManager를 Bean으로 등록
@@ -108,7 +113,8 @@ public class SecurityConfig {
                         "/swagger-ui.html",
                         "/v3/api-docs/**",
                         "/api-docs/**",
-                        "/swagger-resources/**"
+                        "/swagger-resources/**",
+                        "/api/jwt/reissue"
                 )
                 .permitAll()
                 .requestMatchers("/admin").hasRole("ADMIN")
@@ -118,9 +124,11 @@ public class SecurityConfig {
         // JWTFilter를 LoginFilter 이전에 실행되도록 설정
         http.addFilterBefore(new JWTFilter(jwtUtil), UsernamePasswordAuthenticationFilter.class);
 
-        // JWTFilter 등록을 수정한 부분
         // LoginFilter를 JWTFilter 앞에 설정하여 로그인 후 토큰 검증이 가능하게 함
-        http.addFilterAfter(new LoginFilter(authenticationManager(authenticationConfiguration), jwtUtil), JWTFilter.class);
+        http.addFilterAfter(new LoginFilter(authenticationManager(authenticationConfiguration), jwtUtil, refreshTokenRedisRepository), JWTFilter.class);
+
+        // CustomLogoutFilter 등록
+        http.addFilterBefore(new CustomLogoutFilter(jwtUtil, refreshTokenRedisRepository), UsernamePasswordAuthenticationFilter.class);
 
         // 세션을 사용하지 않도록 설정
         http.sessionManagement(session -> session

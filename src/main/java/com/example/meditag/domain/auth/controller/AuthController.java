@@ -2,13 +2,19 @@ package com.example.meditag.domain.auth.controller;
 
 import com.example.meditag.domain.auth.controller.api.AuthApi;
 import com.example.meditag.domain.auth.dto.LoginDTO;
+import jakarta.servlet.http.HttpServletRequest;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/auth")
+@RequiredArgsConstructor
 public class AuthController implements AuthApi {
 
+    // 로그인
     @PostMapping("/login")
     public ResponseEntity<String> login(LoginDTO loginDTO) {
         // 실제 인증은 LoginFilter에서 처리되므로 이 메서드는 Swagger 문서화를 위한 용도로만 사용됩니다.
@@ -16,9 +22,11 @@ public class AuthController implements AuthApi {
     }
 
     // 로그아웃
-//    @PostMapping("/logout")
-//    public ResponseEntity<String> logout() {
-//        // 클라이언트가 JWT를 제거하면 됨 (서버에서 블랙리스트 저장 가능)
-//        return ResponseEntity.ok("로그아웃 성공!");
-//    }
+    @PostMapping("/logout")
+    public ResponseEntity<String> logout(HttpServletRequest request) {
+        log.info("[AuthController/logout] 로그아웃 요청 처리");
+        // 실제 로그아웃 처리는 CustomLogoutFilter에서 수행됩니다.
+        return ResponseEntity.ok("로그아웃 요청이 처리되었습니다.");
+    }
+
 }
