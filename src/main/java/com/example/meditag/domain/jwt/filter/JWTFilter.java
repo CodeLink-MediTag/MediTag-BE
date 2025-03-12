@@ -1,9 +1,10 @@
-package com.example.meditag.global.jwt;
+package com.example.meditag.domain.jwt.filter;
 
 import com.example.meditag.domain.auth.dto.CustomUserDetails;
 import com.example.meditag.domain.member.entity.Member;
 import com.example.meditag.global.error.exception.CustomAuthenticationException;
 import com.example.meditag.global.error.exception.ErrorCode;
+import com.example.meditag.global.jwt.JWTUtil;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
