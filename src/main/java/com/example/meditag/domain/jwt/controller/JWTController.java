@@ -3,7 +3,7 @@
     import com.example.meditag.domain.jwt.controller.api.JWTApi;
     import com.example.meditag.domain.jwt.dto.TokenDTO;
     import com.example.meditag.domain.jwt.repository.RefreshTokenRedisRepository;
-    import com.example.meditag.global.jwt.JWTUtil;
+    import com.example.meditag.domain.jwt.filter.JWTUtil;
     import jakarta.servlet.http.Cookie;
     import jakarta.servlet.http.HttpServletRequest;
     import jakarta.servlet.http.HttpServletResponse;

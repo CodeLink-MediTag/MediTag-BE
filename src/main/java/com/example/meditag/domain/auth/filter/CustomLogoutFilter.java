@@ -1,7 +1,7 @@
 package com.example.meditag.domain.auth.filter;
 
 import com.example.meditag.domain.jwt.repository.RefreshTokenRedisRepository;
-import com.example.meditag.global.jwt.JWTUtil;
+import com.example.meditag.domain.jwt.filter.JWTUtil;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Cookie;
@@ -73,5 +73,4 @@ public class CustomLogoutFilter extends OncePerRequestFilter {
             response.getWriter().write("로그아웃 처리 중 오류가 발생했습니다.");
         }
     }
-
 }

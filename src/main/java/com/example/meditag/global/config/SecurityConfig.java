@@ -4,7 +4,7 @@ import com.example.meditag.domain.jwt.repository.RefreshTokenRedisRepository;
 import com.example.meditag.domain.oauth2.hendler.CustomSuccessHandler;
 import com.example.meditag.domain.oauth2.service.CustomOAuth2UserService;
 import com.example.meditag.domain.jwt.filter.JWTFilter;
-import com.example.meditag.global.jwt.JWTUtil;
+import com.example.meditag.domain.jwt.filter.JWTUtil;
 import com.example.meditag.domain.auth.filter.LoginFilter;
 import com.example.meditag.domain.auth.filter.CustomLogoutFilter;
 import jakarta.servlet.http.HttpServletRequest;
