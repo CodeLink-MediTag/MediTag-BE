@@ -15,7 +15,6 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @Builder
 public class RecordingCreateRequestDTO {
-    private Long id;
 
     //제목
     private String title;
