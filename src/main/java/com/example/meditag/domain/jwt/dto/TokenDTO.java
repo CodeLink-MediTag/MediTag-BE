@@ -1,4 +1,4 @@
-package com.example.meditag.global.jwt;
+package com.example.meditag.domain.jwt.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -12,5 +12,5 @@ import lombok.NoArgsConstructor;
 public class TokenDTO {
 
     private String accessToken;  // 액세스 토큰
-//    private String refreshToken; // 리프레시 토큰 (선택)
+    private String refreshToken; // 리프레시 토큰 (선택)
 }

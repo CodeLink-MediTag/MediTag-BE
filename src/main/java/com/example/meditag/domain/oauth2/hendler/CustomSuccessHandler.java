@@ -1,13 +1,16 @@
 package com.example.meditag.domain.oauth2.hendler;
 
-import com.example.meditag.global.jwt.TokenDTO;
+import com.example.meditag.domain.jwt.dto.TokenDTO;
+import com.example.meditag.domain.jwt.repository.RefreshTokenRedisRepository;
 import com.example.meditag.domain.oauth2.dto.CustomOAuth2User;
-import com.example.meditag.global.jwt.JWTUtil;
+import com.example.meditag.domain.jwt.filter.JWTUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
@@ -23,8 +26,11 @@ public class CustomSuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
 
     private final JWTUtil jwtUtil;
 
-    public CustomSuccessHandler(JWTUtil jwtUtil) {
+    private final RefreshTokenRedisRepository refreshTokenRedisRepository;
+
+    public CustomSuccessHandler(JWTUtil jwtUtil, RefreshTokenRedisRepository refreshTokenRedisRepository) {
         this.jwtUtil = jwtUtil;
+        this.refreshTokenRedisRepository = refreshTokenRedisRepository;
         log.info("[CustomSuccessHandler] CustomSuccessHandler 생성자 주입 완료");
     }
 
@@ -47,19 +53,37 @@ public class CustomSuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         log.info("[CustomSuccessHandler/onAuthenticationSuccess] 3. 사용자 권한: {}", role);
 
         // JWT 생성
-        String token = jwtUtil.createJwt(username, role, 60 * 60 * 60L); // 만료 시간: 60 * 60 * 60초
-        log.info("[CustomSuccessHandler/onAuthenticationSuccess] 4. JWT 생성 완료, 토큰: {}", token);
+        String access = jwtUtil.createAccessToken(username, role, 60 * 60 * 1000L); // 1시간
+        String refresh = jwtUtil.createRefreshToken(username, 60 * 60 * 24 * 30 * 1000L); // 30일
+        log.info("[CustomSuccessHandler/onAuthenticationSuccess] 4. JWT 생성 완료, 토큰: {}", access);
+
+        // RefreshToken 저장 (Redis)
+        refreshTokenRedisRepository.saveRefreshToken(username, refresh);
 
         // 응답 헤더 및 JSON 응답 추가
         response.setContentType("application/json");
         response.setCharacterEncoding("UTF-8");
-        new ObjectMapper().writeValue(response.getWriter(), new TokenDTO(token));
+        new ObjectMapper().writeValue(response.getWriter(), new TokenDTO(access, refresh));
         log.info("[CustomSuccessHandler/onAuthenticationSuccess] 5. JWT 응답 전송 완료");
 
         // JWT를 Authorization 헤더에 추가
-        response.addHeader("Authorization", "Bearer " + token);
+        response.addHeader("Authorization", "Bearer " + access);
+        response.addCookie(createCookie("refresh", refresh));
+        response.setStatus(HttpStatus.OK.value());
         log.info("[CustomSuccessHandler/onAuthenticationSuccess] 6. Authorization 헤더에 JWT 추가 완료");
 
         log.info("[CustomSuccessHandler/onAuthenticationSuccess] 인증 성공 처리 종료");
+    }
+
+    private Cookie createCookie(String key, String value) {
+        Cookie cookie = new Cookie(key, value);
+        cookie.setMaxAge(24 * 60 * 60); // 1일 동안 유지
+        cookie.setPath("/"); // 모든 경로에서 접근 가능하도록 설정
+        cookie.setHttpOnly(true); // JavaScript에서 접근 불가능하도록 설정 (보안 강화)
+
+        // HTTPS 환경이 아니라면 secure 설정 주석 처리
+        // cookie.setSecure(true);
+
+        return cookie;
     }
 }
