@@ -30,6 +30,7 @@ public class JWTFilter extends OncePerRequestFilter { // 한 요청당 한 번�
         String path = request.getRequestURI();
         if (path.startsWith("/api/member/register")
                 || path.startsWith("/api/auth/login")
+                || path.startsWith("/api/jwt/reissue")
                 || path.startsWith("/login")
                 || path.startsWith("/swagger-ui")
                 || path.startsWith("/v3/api-docs")

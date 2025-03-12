@@ -19,9 +19,19 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 public class AuthController implements AuthApi {
 
+    // 로그인
     @PostMapping("/login")
     public ResponseEntity<String> login(LoginDTO loginDTO) {
         // 실제 인증은 LoginFilter에서 처리되므로 이 메서드는 Swagger 문서화를 위한 용도로만 사용됩니다.
         return null;
     }
+
+    // 로그아웃
+    @PostMapping("/logout")
+    public ResponseEntity<String> logout(HttpServletRequest request) {
+        log.info("[AuthController/logout] 로그아웃 요청 처리");
+        // 실제 로그아웃 처리는 CustomLogoutFilter에서 수행됩니다.
+        return ResponseEntity.ok("로그아웃 요청이 처리되었습니다.");
+    }
+
 }
