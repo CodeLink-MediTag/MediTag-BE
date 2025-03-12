@@ -13,7 +13,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.ResponseEntity;
 
-
 @Tag(name = "인증 관리", description = "인증 관련 API")
 public interface AuthApi {
 
@@ -35,5 +34,16 @@ public interface AuthApi {
     })
     ResponseEntity<String> login(
             @Parameter(description = "회원 정보", required = true) LoginDTO loginDTO
+    );
+
+    @Operation(summary = "로그아웃", description = "로그아웃을 수행하고 JWT 토큰을 삭제합니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "로그아웃 성공",
+                    content = @Content(schema = @Schema(type = "string", example = "로그아웃 되었습니다."))),
+            @ApiResponse(responseCode = "400", description = "토큰이 없거나 유효하지 않음",
+                    content = @Content(schema = @Schema(type = "string", example = "토큰이 없습니다. 로그아웃을 진행할 수 없습니다.")))
+    })
+    ResponseEntity<String> logout(
+            @Parameter(description = "HTTP 요청", required = true) HttpServletRequest request
     );
 }

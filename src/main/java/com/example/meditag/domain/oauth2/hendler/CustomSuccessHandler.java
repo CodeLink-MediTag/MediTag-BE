@@ -1,6 +1,7 @@
 package com.example.meditag.domain.oauth2.hendler;
 
 import com.example.meditag.domain.jwt.dto.TokenDTO;
+import com.example.meditag.domain.jwt.repository.RefreshTokenRedisRepository;
 import com.example.meditag.domain.oauth2.dto.CustomOAuth2User;
 import com.example.meditag.global.jwt.JWTUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -25,8 +26,11 @@ public class CustomSuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
 
     private final JWTUtil jwtUtil;
 
-    public CustomSuccessHandler(JWTUtil jwtUtil) {
+    private final RefreshTokenRedisRepository refreshTokenRedisRepository;
+
+    public CustomSuccessHandler(JWTUtil jwtUtil, RefreshTokenRedisRepository refreshTokenRedisRepository) {
         this.jwtUtil = jwtUtil;
+        this.refreshTokenRedisRepository = refreshTokenRedisRepository;
         log.info("[CustomSuccessHandler] CustomSuccessHandler 생성자 주입 완료");
     }
 
@@ -49,9 +53,12 @@ public class CustomSuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         log.info("[CustomSuccessHandler/onAuthenticationSuccess] 3. 사용자 권한: {}", role);
 
         // JWT 생성
-        String access = jwtUtil.createAccessToken(username, role, 60 * 60 * 1000L);
-        String refresh = jwtUtil.createRefreshToken(username, 60 * 60 * 60 * 1000L);
+        String access = jwtUtil.createAccessToken(username, role, 60 * 60 * 1000L); // 1시간
+        String refresh = jwtUtil.createRefreshToken(username, 60 * 60 * 24 * 30 * 1000L); // 30일
         log.info("[CustomSuccessHandler/onAuthenticationSuccess] 4. JWT 생성 완료, 토큰: {}", access);
+
+        // RefreshToken 저장 (Redis)
+        refreshTokenRedisRepository.saveRefreshToken(username, refresh);
 
         // 응답 헤더 및 JSON 응답 추가
         response.setContentType("application/json");

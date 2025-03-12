@@ -2,6 +2,7 @@ package com.example.meditag.domain.auth.filter;
 
 import com.example.meditag.domain.auth.dto.CustomUserDetails;
 import com.example.meditag.domain.auth.dto.LoginDTO;
+import com.example.meditag.domain.jwt.repository.RefreshTokenRedisRepository;
 import com.example.meditag.global.error.ErrorResponse;
 import com.example.meditag.global.error.exception.ErrorCode;
 import com.example.meditag.global.jwt.JWTUtil;
@@ -30,11 +31,13 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter { // 로�
 
     private final AuthenticationManager authenticationManager; // 인증을 담당하는 매니저
     private final JWTUtil jwtUtil; // JWT 유틸리티 클래스
+    private final RefreshTokenRedisRepository refreshTokenRedisRepository;
 //    private final CustomAuthenticationEntryPoint authenticationEntryPoint; // 예외 처리 담당
 
-    public LoginFilter(AuthenticationManager authenticationManager, JWTUtil jwtUtil) {
+    public LoginFilter(AuthenticationManager authenticationManager, JWTUtil jwtUtil, RefreshTokenRedisRepository refreshTokenRedisRepository) {
         this.authenticationManager = authenticationManager;
         this.jwtUtil = jwtUtil;
+        this.refreshTokenRedisRepository = refreshTokenRedisRepository;
 //        this.authenticationEntryPoint = authenticationEntryPoint;
         setFilterProcessesUrl("/api/auth/login");
         log.info("[LoginFilter] LoginFilter 생성자 주입");
@@ -87,6 +90,9 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter { // 로�
         String refresh = jwtUtil.createRefreshToken(username, 60 * 60 * 60 * 1000L);
 
         log.info("[LoginFilter/successfulAuthentication] 5. JWT 토큰 생성 - Access: {}, Refresh: {}", access, refresh);
+
+        // RefreshToken 저장 (Redis)
+        refreshTokenRedisRepository.saveRefreshToken(username, refresh);
 
         // TokenDTO 생성 및 JSON 응답
         TokenDTO tokenDTO = TokenDTO.builder()
