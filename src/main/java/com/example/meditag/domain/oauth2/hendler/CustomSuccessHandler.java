@@ -1,6 +1,6 @@
 package com.example.meditag.domain.oauth2.hendler;
 
-import com.example.meditag.global.jwt.TokenDTO;
+import com.example.meditag.domain.jwt.dto.TokenDTO;
 import com.example.meditag.domain.oauth2.dto.CustomOAuth2User;
 import com.example.meditag.global.jwt.JWTUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -49,8 +49,8 @@ public class CustomSuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         log.info("[CustomSuccessHandler/onAuthenticationSuccess] 3. 사용자 권한: {}", role);
 
         // JWT 생성
-        String access = jwtUtil.createJwt(username, role, 60 * 60 * 60L);
-        String refresh = jwtUtil.createJwt(username, role, 60 * 60 * 60 * 24L);
+        String access = jwtUtil.createAccessToken(username, role, 60 * 60 * 1000L);
+        String refresh = jwtUtil.createRefreshToken(username, 60 * 60 * 60 * 1000L);
         log.info("[CustomSuccessHandler/onAuthenticationSuccess] 4. JWT 생성 완료, 토큰: {}", access);
 
         // 응답 헤더 및 JSON 응답 추가
@@ -69,12 +69,13 @@ public class CustomSuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
     }
 
     private Cookie createCookie(String key, String value) {
-
         Cookie cookie = new Cookie(key, value);
-        cookie.setMaxAge(24*60*60);
-        //cookie.setSecure(true);
-        //cookie.setPath("/");
-        cookie.setHttpOnly(true);
+        cookie.setMaxAge(24 * 60 * 60); // 1일 동안 유지
+        cookie.setPath("/"); // 모든 경로에서 접근 가능하도록 설정
+        cookie.setHttpOnly(true); // JavaScript에서 접근 불가능하도록 설정 (보안 강화)
+
+        // HTTPS 환경이 아니라면 secure 설정 주석 처리
+        // cookie.setSecure(true);
 
         return cookie;
     }

@@ -1,4 +1,4 @@
-package com.example.meditag.global.jwt;
+package com.example.meditag.domain.jwt.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

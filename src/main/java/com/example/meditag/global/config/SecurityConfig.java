@@ -2,9 +2,9 @@ package com.example.meditag.global.config;
 
 import com.example.meditag.domain.oauth2.hendler.CustomSuccessHandler;
 import com.example.meditag.domain.oauth2.service.CustomOAuth2UserService;
-import com.example.meditag.global.jwt.JWTFilter;
+import com.example.meditag.domain.jwt.filter.JWTFilter;
 import com.example.meditag.global.jwt.JWTUtil;
-import com.example.meditag.domain.auth.security.LoginFilter;
+import com.example.meditag.domain.auth.filter.LoginFilter;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -108,7 +108,8 @@ public class SecurityConfig {
                         "/swagger-ui.html",
                         "/v3/api-docs/**",
                         "/api-docs/**",
-                        "/swagger-resources/**"
+                        "/swagger-resources/**",
+                        "/api/auth/reissue"
                 )
                 .permitAll()
                 .requestMatchers("/admin").hasRole("ADMIN")
