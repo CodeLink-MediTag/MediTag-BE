@@ -36,11 +36,7 @@ public class SwaggerConfig {
     private Info apiInfo() {
         return new Info()
                 .title("Meditag API")
-                .description("Meditag REST API 문서\n\n" +
-                        "인증 방법:\n" +
-                        "1. /api/auth/login API로 로그인하여 JWT 토큰을 받습니다.\n" +
-                        "2. 받은 토큰을 상단의 'Authorize' 버튼을 클릭하여 입력합니다.\n" +
-                        "3. 토큰 형식: Bearer {token}")
+                .description("Meditag REST API 문서")
                 .version("1.0.0");
     }
 }
