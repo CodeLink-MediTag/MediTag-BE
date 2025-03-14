@@ -1,6 +1,7 @@
 package com.example.meditag.domain.jwt.filter;
 
 import com.example.meditag.domain.auth.dto.CustomUserDetails;
+import com.example.meditag.domain.jwt.util.JWTUtil;
 import com.example.meditag.domain.member.entity.Member;
 import com.example.meditag.global.error.exception.CustomAuthenticationException;
 import com.example.meditag.global.error.exception.ErrorCode;
