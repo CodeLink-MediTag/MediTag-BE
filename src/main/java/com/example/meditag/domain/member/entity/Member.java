@@ -1,5 +1,6 @@
 package com.example.meditag.domain.member.entity;
 
+import com.example.meditag.domain.chatbot.entity.ChatHistory;
 import com.example.meditag.domain.common.model.BaseTimeEntity;
 import com.example.meditag.domain.medicine.entity.Medicine;
 import jakarta.persistence.*;
@@ -50,6 +51,10 @@ public class Member extends BaseTimeEntity {
     //약 연관관계 매핑(일대다)
     @OneToMany(mappedBy = "member", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Medicine> medicines = new ArrayList<>();
+
+    //챗봇 연관관계 매핑(일대다)
+    @OneToMany(mappedBy = "member", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<ChatHistory> chatHistories = new ArrayList<>();
 
     // 최종 로그인 시간을 갱신하는 메서드
     public void updateLastLoginAt() {
