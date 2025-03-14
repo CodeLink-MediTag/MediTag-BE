@@ -1,4 +1,4 @@
-package com.example.meditag.domain.jwt.filter;
+package com.example.meditag.domain.jwt.util;
 
 import io.jsonwebtoken.Jwts;
 import lombok.extern.slf4j.Slf4j;
