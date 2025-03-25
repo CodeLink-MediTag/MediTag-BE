@@ -72,7 +72,7 @@ public class SecurityConfig {
             @Override
             public CorsConfiguration getCorsConfiguration(HttpServletRequest request) {
                 CorsConfiguration configuration = new CorsConfiguration();
-                configuration.setAllowedOrigins(List.of("http://localhost:3000", "http://10.0.2.2:3000"));
+                configuration.setAllowedOrigins(Collections.singletonList("*"));  // 모든 URL 허용
                 configuration.setAllowedMethods(Collections.singletonList("*"));
                 configuration.setAllowCredentials(true);
                 configuration.setAllowedHeaders(Collections.singletonList("*"));
@@ -81,6 +81,7 @@ public class SecurityConfig {
                 return configuration;
             }
         }));
+
 
         // CSRF 비활성화
         http.csrf(csrf -> csrf.disable());
