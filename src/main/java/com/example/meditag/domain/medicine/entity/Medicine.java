@@ -1,6 +1,5 @@
 package com.example.meditag.domain.medicine.entity;
 
-import com.example.meditag.domain.alarm.entity.Alarm;
 import com.example.meditag.domain.calendar.entity.Calendar;
 import com.example.meditag.domain.common.model.BaseTimeEntity;
 import com.example.meditag.domain.member.entity.Member;
