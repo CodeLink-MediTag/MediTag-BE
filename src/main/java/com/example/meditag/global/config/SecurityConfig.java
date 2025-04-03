@@ -106,6 +106,7 @@ public class SecurityConfig {
         http.authorizeHttpRequests(auth -> auth
                 .requestMatchers(
                         "/api/auth/login",
+                        "api/auth/kakao-login",
                         "/",
                         "/api/member/register",
                         "/login/oauth2/code/naver",
