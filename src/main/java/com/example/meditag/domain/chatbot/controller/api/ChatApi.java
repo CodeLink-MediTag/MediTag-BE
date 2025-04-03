@@ -1,5 +1,6 @@
 package com.example.meditag.domain.chatbot.controller.api;
 
+import com.example.meditag.domain.auth.dto.CustomUserDetails;
 import com.example.meditag.domain.chatbot.dto.ChatSessionDTO;
 import com.example.meditag.domain.chatbot.dto.MessageDTO;
 import io.swagger.v3.oas.annotations.Operation;
@@ -8,11 +9,14 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PathVariable;
 
 import java.util.List;
 
+@Tag(name = "챗봇 관리", description = "챗봇 관련 API")
 public interface ChatApi {
 
     @Operation(summary = "채팅 세션 생성", description = "사용자가 새로운 채팅 세션을 시작합니다.")
@@ -20,7 +24,7 @@ public interface ChatApi {
             @ApiResponse(responseCode = "200", description = "채팅 세션 생성 성공"),
             @ApiResponse(responseCode = "401", description = "인증 실패", content = @Content)
     })
-    ResponseEntity<String> createChatSession();
+    ResponseEntity<String> createChatSession(@AuthenticationPrincipal CustomUserDetails customUserDetails);
 
     @Operation(summary = "사용자 세션 조회", description = "사용자의 모든 채팅 세션을 조회합니다.")
     @ApiResponses(value = {
@@ -29,18 +33,20 @@ public interface ChatApi {
                             schema = @Schema(implementation = ChatSessionDTO.class))),
             @ApiResponse(responseCode = "401", description = "인증 실패", content = @Content)
     })
-    ResponseEntity<List<ChatSessionDTO>> getSessions();
+    ResponseEntity<List<ChatSessionDTO>> getSessions(@AuthenticationPrincipal CustomUserDetails customUserDetails);
 
-    @Operation(summary = "메시지 저장", description = "사용자가 보낸 메시지를 저장합니다.")
+    @Operation(summary = "메시지 저장 및 챗봇 응답 생성", description = "사용자가 보낸 메시지를 저장하고, FAQ 또는 챗봇을 통해 응답을 생성합니다.")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "메시지 저장 성공",
+            @ApiResponse(responseCode = "200", description = "메시지 저장 및 응답 생성 성공",
                     content = @Content(mediaType = "application/json",
                             schema = @Schema(implementation = MessageDTO.class))),
             @ApiResponse(responseCode = "400", description = "잘못된 요청 데이터", content = @Content),
             @ApiResponse(responseCode = "401", description = "인증 실패", content = @Content)
     })
-    ResponseEntity<MessageDTO> saveMessage(
-            @RequestBody(description = "저장할 메시지 정보", required = true,
+    ResponseEntity<MessageDTO> saveMessageAndGenerateResponse(
+            @AuthenticationPrincipal CustomUserDetails customUserDetails,
+            @PathVariable Long chatSessionId,
+            @RequestBody(description = "사용자가 보낸 메시지 정보", required = true,
                     content = @Content(mediaType = "application/json",
                             schema = @Schema(implementation = MessageDTO.class))) MessageDTO messageDto);
 
@@ -53,14 +59,6 @@ public interface ChatApi {
             @ApiResponse(responseCode = "401", description = "인증 실패", content = @Content)
     })
     ResponseEntity<List<MessageDTO>> getMessages(
+            @AuthenticationPrincipal CustomUserDetails customUserDetails,
             @PathVariable Long chatSessionId);
-
-    @Operation(summary = "사용자 메시지 처리 및 응답 생성", description = "사용자가 보낸 메시지를 처리하고 응답을 생성합니다.")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "응답 생성 성공"),
-            @ApiResponse(responseCode = "400", description = "잘못된 요청 데이터", content = @Content),
-            @ApiResponse(responseCode = "500", description = "서버 에러 발생", content = @Content)
-    })
-    ResponseEntity<String> generateResponse(
-            @RequestBody(description="사용자가 보낸 메시지 내용", required=true) String userMessage);
 }

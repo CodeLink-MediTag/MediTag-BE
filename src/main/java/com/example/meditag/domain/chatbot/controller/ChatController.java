@@ -16,7 +16,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/chat")
 @RequiredArgsConstructor
-public class ChatController {
+public class ChatController implements ChatApi {
 
     private final ChatSessionService chatSessionService;
     private final MessageService messageService;
@@ -37,16 +37,19 @@ public class ChatController {
 
     // 메시지 저장 및 응답 생성 (통합 API)
     @PostMapping("/message/{chatSessionId}")
-    public ResponseEntity<MessageDTO> saveMessageAndGenerateResponse(
-            @AuthenticationPrincipal CustomUserDetails customUserDetails,
-            @PathVariable Long chatSessionId,
-            @RequestBody MessageDTO messageDto) {
-
+    public ResponseEntity<MessageDTO> saveMessageAndGenerateResponse(@AuthenticationPrincipal CustomUserDetails customUserDetails,
+                                                                     @PathVariable Long chatSessionId,
+                                                                     @RequestBody MessageDTO messageDto) {
         // 사용자 메시지 저장 및 챗봇 응답 생성
-        MessageDTO responseMessage = messageService.saveMessageAndGenerateResponse(customUserDetails.getUsername(), chatSessionId, messageDto);
+        MessageDTO responseMessage = messageService.saveMessageAndGenerateResponse(
+                customUserDetails.getUsername(),
+                chatSessionId,
+                messageDto
+        );
 
         return ResponseEntity.ok(responseMessage);
     }
+
 
     // 대화 기록 조회
     @GetMapping("/message/{chatSessionId}")

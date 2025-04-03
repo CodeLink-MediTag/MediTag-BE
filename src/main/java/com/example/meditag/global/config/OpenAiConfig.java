@@ -1,6 +1,6 @@
 package com.example.meditag.global.config;
 
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.env.Environment;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpHeaders;
@@ -9,22 +9,26 @@ import org.springframework.web.reactive.function.client.WebClient;
 @Configuration
 public class OpenAiConfig {
 
-    @Value("${openai.api.url}")
-    private String apiUrl;
+    private final Environment env;
 
-    @Value("${openai.api.key}")
-    private String apiKey;
-
-    @Value("${openai.api.project}")
-    private String apiProject;
+    public OpenAiConfig(Environment env) {
+        this.env = env;
+    }
 
     @Bean
     public WebClient webClient() {
+        String apiUrl = env.getProperty("openai.api.url");
+        String apiKey = env.getProperty("openai.api.key");
+
+        // 실제 API 키 로그로 출력하여 확인
+        System.out.println("==== apiUrl 확인: [" + apiUrl + "]");
+        System.out.println("==== apiKey 확인: [" + apiKey + "]");
+
         return WebClient.builder()
-                .baseUrl(apiUrl) // 기본 URL 설정
-                .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + apiKey) // 인증 헤더 추가
-                .defaultHeader(HttpHeaders.CONTENT_TYPE, "application/json") // Content-Type 추가
-                .defaultHeader("OpenAI-Project", apiProject) // 프로젝트 ID 추가
+                .baseUrl(apiUrl)
+                .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + apiKey)
+                .defaultHeader(HttpHeaders.CONTENT_TYPE, "application/json")
                 .build();
     }
+
 }
