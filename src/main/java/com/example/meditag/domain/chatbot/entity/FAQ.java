@@ -1,26 +1,31 @@
 package com.example.meditag.domain.chatbot.entity;
 
+import com.example.meditag.domain.chatbot.dto.MessageDTO;
 import com.example.meditag.domain.common.model.BaseTimeEntity;
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 @Entity
 @Getter
-@Setter
-@NoArgsConstructor
 @AllArgsConstructor
+@NoArgsConstructor
 @Builder
-@Table(name = "faq")
 public class FAQ extends BaseTimeEntity {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, length = 1000)
+    @Column(length=1000, nullable=false)
     private String question;
 
-    @Column(nullable = false, length = 2000)
+    @Column(length=2000, nullable=false)
     private String answer;
-}
 
+    // 추가된 액션 필드
+    @Enumerated(EnumType.STRING)
+    private MessageDTO.ActionDTO.ActionType actionType;
+
+    private String actionTarget;
+}
