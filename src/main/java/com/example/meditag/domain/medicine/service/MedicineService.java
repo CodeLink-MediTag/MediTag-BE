@@ -2,6 +2,7 @@ package com.example.meditag.domain.medicine.service;
 
 import com.example.meditag.domain.alarm.entity.Alarm;
 import com.example.meditag.domain.alarm.repository.AlarmRepository;
+import com.example.meditag.domain.alarm.service.AlarmSchedulerService;
 import com.example.meditag.domain.medicine.dto.request.MedicineCreateRequestDTO;
 import com.example.meditag.domain.medicine.dto.response.MedicineResponseDTO;
 import com.example.meditag.domain.medicine.dto.response.MedicineGetDateResponseDTO;
@@ -44,7 +45,7 @@ public class MedicineService {
     private final CalendarRepository calendarRepository;
     private final AlarmRepository alarmRepository;
     private final S3Service s3Service;
-
+    private final AlarmSchedulerService alarmSchedulerService;
     // 복약 알림 등록 API
     @Transactional
     public MedicineResponseDTO createMedicine(String username, MedicineCreateRequestDTO requestDto, MultipartFile file) {
@@ -130,7 +131,8 @@ public class MedicineService {
             }
         }
         alarmRepository.saveAll(alarmList); // 알람 저장
-
+        // 알람 스케줄링 추가
+        alarmSchedulerService.scheduleAlarms(savedMedicine, alarmList);
         return MedicineMapper.toMedicineResponseDTO(savedMedicine);
     }
 

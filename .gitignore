@@ -40,3 +40,5 @@ application_secret.properties
 # .env 파일을 git에서 무시하도록 설정
 .env
 
+#firebase 키
+/src/main/resources/firebase-adminsdk.json
