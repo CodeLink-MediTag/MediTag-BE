@@ -36,7 +36,6 @@ public class MedicineRegisterService {
         return message.matches(".*(약|알림).*등록(할게|할래|해줘|해|하고싶어|하고 싶어).*");
     }
 
-
     public String execute(String username, String message) {
         if (message.contains("취소") || message.contains("그만")) {
             sessionStorage.clearSession(username);
