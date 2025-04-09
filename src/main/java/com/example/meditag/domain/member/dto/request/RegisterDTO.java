@@ -29,9 +29,6 @@ public class RegisterDTO {
     @Size(min = 8, max = 20, message = "비밀번호는 8~20자로 입력해야 합니다.")
     private String password;
 
-    //firebase token
-    private String firebasetoken;
-
     @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();
 
