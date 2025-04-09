@@ -58,6 +58,9 @@ dependencies {
 	// Redis
 	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
 
+	//firebase
+	implementation 'com.google.firebase:firebase-admin:9.0.0'
+  
 	// OpenAI
 	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.1.0'
 	implementation 'org.springframework.boot:spring-boot-starter-webflux'

@@ -9,7 +9,6 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -21,6 +20,10 @@ public interface AlarmRepository extends JpaRepository<Alarm, Long> {
             "JOIN c.medicine m " +
             "WHERE m = :medicine AND c.date = :date")
     List<Alarm> findByMedicineAndDate(@Param("medicine") Medicine medicine, @Param("date") LocalDate date);
+
+    List<Alarm> findByAlarmTimeBetweenAndTakingFalse(LocalDateTime startTime, LocalDateTime endTime);
+//    List<Alarm> findByMedicineIdAndAlarmTimeAfter(Long medicineId, LocalDateTime dateTime);
+//    List<Alarm> findByMedicineId(Long medicineId);
 
     @Query("SELECT a FROM Alarm a " +
             "JOIN a.calendar c " +
@@ -52,4 +55,3 @@ public interface AlarmRepository extends JpaRepository<Alarm, Long> {
 
     List<Alarm> findByCalendar_Medicine_Member_Username(String username);
 }
-
