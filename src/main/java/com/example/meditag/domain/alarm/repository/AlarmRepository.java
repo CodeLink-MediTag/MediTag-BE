@@ -50,5 +50,6 @@ public interface AlarmRepository extends JpaRepository<Alarm, Long> {
                                                    @Param("startDateTime") LocalDateTime startDateTime,
                                                    @Param("endDateTime") LocalDateTime endDateTime);
 
+    List<Alarm> findByCalendar_Medicine_Member_Username(String username);
 }
 
