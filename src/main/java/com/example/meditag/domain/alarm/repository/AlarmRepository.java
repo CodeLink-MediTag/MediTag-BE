@@ -8,6 +8,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Repository
@@ -18,4 +19,7 @@ public interface AlarmRepository extends JpaRepository<Alarm, Long> {
             "WHERE m = :medicine AND c.date = :date")
     List<Alarm> findByMedicineAndDate(@Param("medicine") Medicine medicine, @Param("date") LocalDate date);
 
+    List<Alarm> findByAlarmTimeBetweenAndTakingFalse(LocalDateTime startTime, LocalDateTime endTime);
+//    List<Alarm> findByMedicineIdAndAlarmTimeAfter(Long medicineId, LocalDateTime dateTime);
+//    List<Alarm> findByMedicineId(Long medicineId);
 }

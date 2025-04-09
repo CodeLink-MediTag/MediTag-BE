@@ -39,6 +39,9 @@ public class Member extends BaseTimeEntity {
     //권한
     private String role;
 
+    //파이어페이스 토큰
+    private String firebasetoken;
+
     // 최종 로그인 시간
     @Column(name = "last_login_at")
     private LocalDateTime lastLoginAt;
