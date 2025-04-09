@@ -26,7 +26,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         log.info("[CustomOAuth2UserService] CustomOAuth2UserService 생성자 주입");
     }
 
-    //사용자 정보 데이터를 인자로 받아오는 매소드
+    //사용자정보 데이터를 인자로 받아오는 매소드
     @Override
     public OAuth2User loadUser(OAuth2UserRequest userRequest) throws OAuth2AuthenticationException{
         OAuth2User oAuth2User = super.loadUser(userRequest);//유저정보가져오기
