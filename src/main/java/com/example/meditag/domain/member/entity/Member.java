@@ -1,5 +1,6 @@
 package com.example.meditag.domain.member.entity;
 
+import com.example.meditag.domain.chatbot.entity.ChatSession;
 import com.example.meditag.domain.common.model.BaseTimeEntity;
 import com.example.meditag.domain.medicine.entity.Medicine;
 import jakarta.persistence.*;
@@ -50,7 +51,10 @@ public class Member extends BaseTimeEntity {
     @OneToMany(mappedBy = "member", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Recording> recordings = new ArrayList<>();
 
-    //약 연관관계 매핑(일대다)
+    // ChatSession과 One-to-Many 관계 (하나의 사용자가 여러 세션을 가질 수 있음)
+    @OneToMany(mappedBy = "member", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<ChatSession> chatSessions = new ArrayList<>();
+  
     @OneToMany(mappedBy = "member", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Medicine> medicines = new ArrayList<>();
 
