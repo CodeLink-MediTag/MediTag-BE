@@ -7,11 +7,7 @@ import com.example.meditag.global.error.ErrorResponse;
 import com.example.meditag.global.error.exception.ErrorCode;
 import com.example.meditag.domain.jwt.util.JWTUtil;
 import com.example.meditag.domain.jwt.dto.TokenDTO;
-import com.example.meditag.domain.jwt.util.JWTUtil;
-import com.example.meditag.domain.jwt.dto.TokenDTO;
-import com.example.meditag.global.error.ErrorResponse;
 import com.example.meditag.global.error.exception.CustomAuthenticationException;
-import com.example.meditag.global.error.exception.ErrorCode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.http.Cookie;
@@ -44,6 +40,7 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter { // 로�
         this.refreshTokenRedisRepository = refreshTokenRedisRepository;
         setFilterProcessesUrl("/api/auth/login");
         log.info("[LoginFilter] LoginFilter 생성자 주입");
+    }
 
     @Override
     public Authentication attemptAuthentication(HttpServletRequest request, HttpServletResponse response) throws AuthenticationException {

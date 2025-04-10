@@ -13,8 +13,6 @@ import java.util.List;
 @Repository
 public interface RecordRepository extends JpaRepository<Recording, Long> {
 
-    List<Recording> findByMemberOrderByRecordingTimeDesc(Member member);
-
     // 🔧 날짜 범위에 해당하는 녹음 기록을 조회
     List<Recording> findByMemberAndRecordingTimeBetween(Member member, LocalDateTime start, LocalDateTime end);
 
