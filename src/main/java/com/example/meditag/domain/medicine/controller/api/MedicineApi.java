@@ -24,12 +24,10 @@ public interface MedicineApi {
     @Operation(summary = "약 정보 등록", description = "새로운 약 정보를 등록합니다.\n" +
             "```json\n" +
             "{\n" +
-            "  \"name\": \"처방약1\",\n" +
+            "  \"name\": \"처방약\",\n" +
             "  \"characteristic\": \"겁나 써\",\n" +
             "  \"startDate\": \"2025-03-28\",\n" +
             "  \"duration\": 7,\n" +
-            "  \"frequency\": 3,\n" +
-            "  \"imageUrl\": \"https://example.com/medicine.jpg\",\n" +
             "  \"prescribed\": true,\n" +
             "  \"dosageTimes\": [\n" +
             "    \"아침\",\n" +
@@ -37,9 +35,23 @@ public interface MedicineApi {
             "    \"저녁\"\n" +
             "  ],\n" +
             "  \"alarmTimes\": [\n" +
-            "    \"2025-03-28T08:00:00\",\n" +
-            "    \"2025-03-28T12:00:00\",\n" +
-            "    \"2025-03-28T18:00:00\"\n" +
+            "    \"08:00:00\",\n" +
+            "    \"12:00:00\",\n" +
+            "    \"18:00:00\"\n" +
+            "  ]\n" +
+            "}\n" +
+            "\n" +
+            "{\n" +
+            "  \"name\": \"일반약\",\n" +
+            "  \"characteristic\": \"겁나 써\",\n" +
+            "  \"startDate\": \"2025-03-28\",\n" +
+            "  \"duration\": 7,\n" +
+            "  \"frequency\": 3,\n" +
+            "  \"prescribed\": false,\n" +
+            "  \"alarmTimes\": [\n" +
+            "    \"08:00:00\",\n" +
+            "    \"12:00:00\",\n" +
+            "    \"18:00:00\"\n" +
             "  ]\n" +
             "}\n" +
             "```")
