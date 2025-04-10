@@ -30,9 +30,6 @@ public class MedicineCreateRequestDTO {
     // 복용 횟수(일반약 일때)
     private int frequency;
 
-    // 사진
-    private String imageUrl;
-
     // 처방약 여부
     private boolean prescribed;
 
@@ -40,5 +37,5 @@ public class MedicineCreateRequestDTO {
     private List<String> dosageTimes;
 
     // 일반약일 경우(isPrescribed=false): 알람 시간 목록
-    private List<LocalDateTime> alarmTimes;
+    private List<String> alarmTimes; // "08:00", "12:00" 같은 문자열
 }
