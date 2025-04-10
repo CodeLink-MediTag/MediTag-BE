@@ -1,6 +1,7 @@
 package com.example.meditag.domain.chatbot.controller;
 
 import com.example.meditag.domain.auth.dto.CustomUserDetails;
+import com.example.meditag.domain.chatbot.controller.api.ChatApi;
 import com.example.meditag.domain.chatbot.dto.ChatSessionDTO;
 import com.example.meditag.domain.chatbot.dto.MessageDTO;
 import com.example.meditag.domain.chatbot.entity.ChatSession;
@@ -19,7 +20,7 @@ import java.util.stream.Collectors;
 @RestController // 이 클래스가 REST API 컨트롤러임을 나타냄
 @RequestMapping("/api/chat") // 이 컨트롤러의 모든 요청 URL 앞에 "/api/chat"이 붙음
 @RequiredArgsConstructor // final 필드를 자동으로 생성자로 주입해줌 (DI)
-public class ChatController {
+public class ChatController implements ChatApi {
 
     private final ChatSessionService chatSessionService; // 채팅 세션 생성 및 조회 서비스
     private final MessageProcessorService messageProcessorService; // 메시지를 처리하는 핵심 로직 서비스
