@@ -21,7 +21,8 @@ public interface MemberApi {
             "  \"username\": \"test@gmail.com\",\n" +
             "  \"name\": \"회원1\",\n" +
             "  \"phone\": \"010-1234-5678\",\n" +
-            "  \"password\": \"test12345\"\n" +
+            "  \"password\": \"test12345\",\n" +
+            "  \"firebasetoken\": \"test123\"\n" +
             "}\n" +
             "```")
 

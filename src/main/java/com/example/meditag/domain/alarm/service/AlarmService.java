@@ -30,16 +30,6 @@ public class AlarmService {
     private final AlarmRepository alarmRepository;
     private final CalendarRepository calendarRepository;
 
-    // 처방약 알림 만들기 - 날짜별로 알람 생성
-    @Transactional
-    public void createAlarmsForPrescribedMedicine(Medicine medicine, List<String> dosageTimes, List<LocalDateTime> alarmTimes, LocalDate startDate, int duration) {
-    }
-
-    // 일반약 알림 만들기 - 날짜별로 알람 생성
-    @Transactional
-    public void createAlarmsForNormalMedicine(Medicine medicine, List<LocalDateTime> alarmTimes, LocalDate startDate, int duration) {
-    }
-
     // 복용 여부 API
     @Transactional
     public AlarmResponseDTO toggleTaking (String username, Long medicineId, Long alarmId) {

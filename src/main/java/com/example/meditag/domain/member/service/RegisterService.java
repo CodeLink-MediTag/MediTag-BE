@@ -38,7 +38,8 @@ public class RegisterService {
                 .username(registerDTO.getUsername())
                 .name(registerDTO.getName())
                 .phone(registerDTO.getPhone())
-                .password(bCryptPasswordEncoder.encode(password))  // 비밀번호 암호화
+                .password(bCryptPasswordEncoder.encode(password))
+                .firebasetoken(registerDTO.getFirebasetoken())
                 .role("ROLE_USER")  // 기본 역할 설정
                 .build();
 
