@@ -1,5 +1,7 @@
 package com.example.meditag.domain.chatbot.service;
 
+import com.example.meditag.domain.chatbot.service.message.*;
+import com.example.meditag.domain.chatbot.service.message.register.MedicineRegisterService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 

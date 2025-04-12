@@ -22,6 +22,10 @@ public interface AlarmRepository extends JpaRepository<Alarm, Long> {
             "WHERE m = :medicine AND c.date = :date")
     List<Alarm> findByMedicineAndDate(@Param("medicine") Medicine medicine, @Param("date") LocalDate date);
 
+    List<Alarm> findByAlarmTimeBetweenAndTakingFalse(LocalDateTime startTime, LocalDateTime endTime);
+//    List<Alarm> findByMedicineIdAndAlarmTimeAfter(Long medicineId, LocalDateTime dateTime);
+//    List<Alarm> findByMedicineId(Long medicineId);
+
     @Query("SELECT a FROM Alarm a " +
             "JOIN a.calendar c " +
             "JOIN c.medicine m " +
@@ -50,5 +54,24 @@ public interface AlarmRepository extends JpaRepository<Alarm, Long> {
                                                    @Param("startDateTime") LocalDateTime startDateTime,
                                                    @Param("endDateTime") LocalDateTime endDateTime);
 
-}
+    List<Alarm> findByCalendar_Medicine_Member_Username(String username);
 
+    // 특정 약 이름 필터
+    @Query("""
+    SELECT a FROM Alarm a
+    JOIN a.calendar c
+    JOIN c.medicine m
+    JOIN m.member mem
+    WHERE mem.username = :username
+    AND m.name = :medicineName
+    AND a.alarmTime BETWEEN :start AND :end
+    """)
+    List<Alarm> findByUsernameAndMedicineNameAndAlarmDate(@Param("username") String username,
+                                                          @Param("medicineName") String medicineName,
+                                                          @Param("start") LocalDateTime start,
+                                                          @Param("end") LocalDateTime end);
+
+    @Query("SELECT a FROM Alarm a JOIN FETCH a.calendar WHERE a.id = :alarmId")
+    Optional<Alarm> findByIdWithCalendar(@Param("alarmId") Long alarmId);
+
+}
