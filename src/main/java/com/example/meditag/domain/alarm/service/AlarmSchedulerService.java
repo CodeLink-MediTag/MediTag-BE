@@ -1,6 +1,5 @@
 package com.example.meditag.domain.alarm.service;
 
-
 import com.example.meditag.domain.alarm.entity.Alarm;
 import com.example.meditag.domain.alarm.repository.AlarmRepository;
 import com.example.meditag.domain.medicine.entity.Medicine;
@@ -9,17 +8,13 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.TaskScheduler;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -116,7 +111,4 @@ public class AlarmSchedulerService {
 //        }
 //        log.info("[AlarmSchedulerService] 약(ID: {})의 모든 알림이 취소되었습니다.", medicineId);
 //    }
-
-
-
 }
