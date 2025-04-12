@@ -25,32 +25,36 @@ public class Member extends BaseTimeEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // 이메일 (유니크 값으로 설정 가능)
+    //이메일
     private String username;
 
-    // 이름, 전화번호 등 사용자 정보 필드들
+    //이름
     private String name;
+
+    //전화번호
     private String phone;
 
-    // 비밀번호 (암호화 필요)
+    //비밀번호
     private String password;
 
-    // 권한 (예: ROLE_USER, ROLE_ADMIN 등)
+    //권한
     private String role;
 
-    // 최종 로그인 시간 기록 필드
+    //파이어페이스 토큰
+    private String firebasetoken;
+
+    // 최종 로그인 시간
     @Column(name = "last_login_at")
     private LocalDateTime lastLoginAt;
+
+    //녹음 연관관계 매핑(일대다)
+    @OneToMany(mappedBy = "member", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Recording> recordings = new ArrayList<>();
 
     // ChatSession과 One-to-Many 관계 (하나의 사용자가 여러 세션을 가질 수 있음)
     @OneToMany(mappedBy = "member", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ChatSession> chatSessions = new ArrayList<>();
 
-    // 녹음 파일과 One-to-Many 관계 (기존 설계 유지)
-    @OneToMany(mappedBy = "member", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Recording> recordings = new ArrayList<>();
-
-    // 약물 정보와 One-to-Many 관계 (기존 설계 유지)
     @OneToMany(mappedBy = "member", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Medicine> medicines = new ArrayList<>();
 
@@ -59,4 +63,3 @@ public class Member extends BaseTimeEntity {
         this.lastLoginAt = LocalDateTime.now();
     }
 }
-
