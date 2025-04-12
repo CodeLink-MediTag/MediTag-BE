@@ -55,4 +55,23 @@ public interface AlarmRepository extends JpaRepository<Alarm, Long> {
                                                    @Param("endDateTime") LocalDateTime endDateTime);
 
     List<Alarm> findByCalendar_Medicine_Member_Username(String username);
+
+    // 특정 약 이름 필터
+    @Query("""
+    SELECT a FROM Alarm a
+    JOIN a.calendar c
+    JOIN c.medicine m
+    JOIN m.member mem
+    WHERE mem.username = :username
+    AND m.name = :medicineName
+    AND a.alarmTime BETWEEN :start AND :end
+    """)
+    List<Alarm> findByUsernameAndMedicineNameAndAlarmDate(@Param("username") String username,
+                                                          @Param("medicineName") String medicineName,
+                                                          @Param("start") LocalDateTime start,
+                                                          @Param("end") LocalDateTime end);
+
+    @Query("SELECT a FROM Alarm a JOIN FETCH a.calendar WHERE a.id = :alarmId")
+    Optional<Alarm> findByIdWithCalendar(@Param("alarmId") Long alarmId);
+
 }
