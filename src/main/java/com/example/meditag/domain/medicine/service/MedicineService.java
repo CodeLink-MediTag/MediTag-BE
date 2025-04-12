@@ -218,6 +218,10 @@ public class MedicineService {
                 .build();
     }
 
+    // 약 알림 수정 API
+
+    // 약 알림 삭제 API
+
     // Presigned URL만 생성하여 반환하는 메서드 추가
     public String getPresignedUrl(String filename) {
         return s3Service.createPresignedUrl("test/" + filename);
