@@ -7,6 +7,7 @@ import com.example.meditag.global.error.ErrorResponse;
 import com.example.meditag.global.error.exception.ErrorCode;
 import com.example.meditag.domain.jwt.util.JWTUtil;
 import com.example.meditag.domain.jwt.dto.TokenDTO;
+import com.example.meditag.global.error.exception.CustomAuthenticationException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.http.Cookie;
@@ -32,13 +33,11 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter { // 로�
     private final AuthenticationManager authenticationManager; // 인증을 담당하는 매니저
     private final JWTUtil jwtUtil; // JWT 유틸리티 클래스
     private final RefreshTokenRedisRepository refreshTokenRedisRepository;
-//    private final CustomAuthenticationEntryPoint authenticationEntryPoint; // 예외 처리 담당
 
     public LoginFilter(AuthenticationManager authenticationManager, JWTUtil jwtUtil, RefreshTokenRedisRepository refreshTokenRedisRepository) {
         this.authenticationManager = authenticationManager;
         this.jwtUtil = jwtUtil;
         this.refreshTokenRedisRepository = refreshTokenRedisRepository;
-//        this.authenticationEntryPoint = authenticationEntryPoint;
         setFilterProcessesUrl("/api/auth/login");
         log.info("[LoginFilter] LoginFilter 생성자 주입");
     }
@@ -51,7 +50,11 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter { // 로�
 
             log.info("[LoginFilter/attemptAuthentication] 1. loginDTO로 객체 변환 email:{}, password:{}", loginDTO.getUsername(), loginDTO.getPassword());
 
-            // UsernamePasswordAuthenticationToken 생성
+            if (loginDTO.getUsername() == null || loginDTO.getUsername().isBlank() ||
+                    loginDTO.getPassword() == null || loginDTO.getPassword().isBlank()) {
+                throw new CustomAuthenticationException(ErrorCode.USERNAME_OR_PASSWORD_MISSING);
+            }
+
             UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                     loginDTO.getUsername(),
                     loginDTO.getPassword()
@@ -59,11 +62,11 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter { // 로�
 
             log.info("[LoginFilter/attemptAuthentication] 2. UsernamePasswordAuthenticationToken 생성 authToken: {}", authToken);
 
-            // 인증 시도
             return authenticationManager.authenticate(authToken);
 
+        } catch (CustomAuthenticationException e) {
+            throw e;
         } catch (IOException e) {
-            log.error("[LoginFilter] 로그인 중에 에러", e);
             throw new AuthenticationServiceException("로그인 입력을 읽는 도중 오류 발생: " + e.getMessage());
         }
     }
@@ -102,7 +105,6 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter { // 로�
 
         log.info("[LoginFilter/successfulAuthentication] 6. JWT TokenDTO 생성: {}", tokenDTO);
 
-        // 응답 헤더 설정
         response.setContentType("application/json");
         response.setCharacterEncoding("UTF-8");
         response.setStatus(HttpStatus.OK.value());
@@ -113,38 +115,36 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter { // 로�
 
         // JSON 응답 반환
         new ObjectMapper().writeValue(response.getWriter(), tokenDTO);
+        response.addCookie(refreshTokenCookie);
 
         log.info("[LoginFilter/successfulAuthentication] 7. JWT 토큰 HTTP 헤더 및 쿠키 설정 완료");
     }
 
-    private Cookie createCookie(String key, String value) {
-        Cookie cookie = new Cookie(key, value);
-        cookie.setMaxAge(24 * 60 * 60); // 1일 동안 유지
-        cookie.setPath("/"); // 모든 경로에서 접근 가능하도록 설정
-        cookie.setHttpOnly(true); // JavaScript에서 접근 불가능하도록 설정 (보안 강화)
-
-        // HTTPS 환경이 아니라면 secure 설정 주석 처리
-        // cookie.setSecure(true);
-
-        return cookie;
-    }
-
-
-    // 로그인 실패 시 실행되는 메서드
     @Override
     protected void unsuccessfulAuthentication(HttpServletRequest request, HttpServletResponse response, AuthenticationException failed) throws IOException {
-        log.error("Authentication failed: {}", failed.getMessage());
+        log.error("[LoginFilter] 로그인 실패: {}", failed.getMessage());
 
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         response.setContentType("application/json");
         response.setCharacterEncoding("UTF-8");
 
-        ErrorCode errorCode = ErrorCode.AUTHENTICATION_FAILED; // 기본적으로 로그인 실패 오류 사용
+        ErrorCode errorCode;
 
-        // 오류 응답 생성
+        if (failed instanceof CustomAuthenticationException ex) {
+            errorCode = ex.getErrorCode();
+        } else {
+            errorCode = ErrorCode.INVALID_CREDENTIALS;
+        }
+
         ErrorResponse errorResponse = new ErrorResponse(errorCode.getStatus().value(), errorCode.getMessage());
-
-        // JSON 응답 반환
         new ObjectMapper().writeValue(response.getWriter(), errorResponse);
+    }
+
+    private Cookie createCookie(String key, String value) {
+        Cookie cookie = new Cookie(key, value);
+        cookie.setMaxAge(24 * 60 * 60);
+        cookie.setPath("/");
+        cookie.setHttpOnly(true);
+        return cookie;
     }
 }
