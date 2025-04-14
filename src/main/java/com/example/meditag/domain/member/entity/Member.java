@@ -54,7 +54,7 @@ public class Member extends BaseTimeEntity {
     // ChatSession과 One-to-Many 관계 (하나의 사용자가 여러 세션을 가질 수 있음)
     @OneToMany(mappedBy = "member", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ChatSession> chatSessions = new ArrayList<>();
-
+  
     @OneToMany(mappedBy = "member", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Medicine> medicines = new ArrayList<>();
 
