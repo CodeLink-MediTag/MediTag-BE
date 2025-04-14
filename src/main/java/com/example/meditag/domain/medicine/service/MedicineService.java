@@ -2,6 +2,7 @@ package com.example.meditag.domain.medicine.service;
 
 import com.example.meditag.domain.alarm.entity.Alarm;
 import com.example.meditag.domain.alarm.repository.AlarmRepository;
+import com.example.meditag.domain.alarm.service.AlarmSchedulerService;
 import com.example.meditag.domain.medicine.dto.request.MedicineCreateRequestDTO;
 import com.example.meditag.domain.medicine.dto.response.MedicineResponseDTO;
 import com.example.meditag.domain.medicine.dto.response.MedicineGetDateResponseDTO;
@@ -44,6 +45,7 @@ public class MedicineService {
     private final CalendarRepository calendarRepository;
     private final AlarmRepository alarmRepository;
     private final S3Service s3Service;
+    private final AlarmSchedulerService alarmSchedulerService;
 
     // 복약 알림 등록 API
     @Transactional
@@ -102,27 +104,28 @@ public class MedicineService {
             if (requestDto.isPrescribed()) {
                 // 🔥 사용자가 입력한 복용 시간 (`dosageTimes`) 기반으로 생성!
                 List<String> dosageTimes = requestDto.getDosageTimes(); // 예: ["점심", "저녁"]
-                List<LocalDateTime> alarmTimes = requestDto.getAlarmTimes(); // 예: ["13:00", "20:00"]
+                List<String> alarmTimes = requestDto.getAlarmTimes(); // 예: ["13:00", "20:00"]
 
                 if (dosageTimes.size() != alarmTimes.size()) {
                     throw new CustomException(ErrorCode.INVALID_INPUT_VALUE); // 크기가 맞지 않으면 예외 처리
                 }
-
                 for (int i = 0; i < dosageTimes.size(); i++) {
+                    LocalTime time = LocalTime.parse(alarmTimes.get(i)); // "08:00" → LocalTime
                     Alarm alarm = Alarm.builder()
                             .calendar(calendar)
-                            .dosageTime(dosageTimes.get(i)) // 사용자 입력 (점심, 저녁 등)
-                            .alarmTime(LocalDateTime.of(calendar.getDate(), LocalTime.from(alarmTimes.get(i)))) // 사용자가 입력한 시간
+                            .dosageTime(dosageTimes.get(i)) // "아침", "점심"
+                            .alarmTime(LocalDateTime.of(calendar.getDate(), time))
                             .taking(false)
                             .build();
                     alarmList.add(alarm);
                 }
             } else {
                 // 일반약이면 사용자가 입력한 알람 시간 사용
-                for (LocalDateTime time : requestDto.getAlarmTimes()) {
+                for (String timeString : requestDto.getAlarmTimes()) {
+                    LocalTime time = LocalTime.parse(timeString); // 예: "08:00" -> LocalTime
                     Alarm alarm = Alarm.builder()
                             .calendar(calendar)
-                            .alarmTime(LocalDateTime.of(calendar.getDate(), LocalTime.from(time)))
+                            .alarmTime(LocalDateTime.of(calendar.getDate(), time))
                             .taking(false)
                             .build();
                     alarmList.add(alarm);
@@ -130,6 +133,9 @@ public class MedicineService {
             }
         }
         alarmRepository.saveAll(alarmList); // 알람 저장
+
+        // 알람 스케줄링 추가
+        alarmSchedulerService.scheduleAlarms(savedMedicine, alarmList);
 
         return MedicineMapper.toMedicineResponseDTO(savedMedicine);
     }
@@ -211,6 +217,10 @@ public class MedicineService {
                 .medicines(medicineDTOList)  // 해당 날짜에 복용해야 할 약 리스트
                 .build();
     }
+
+    // 약 알림 수정 API
+
+    // 약 알림 삭제 API
 
     // Presigned URL만 생성하여 반환하는 메서드 추가
     public String getPresignedUrl(String filename) {

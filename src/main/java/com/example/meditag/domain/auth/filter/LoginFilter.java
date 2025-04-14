@@ -115,7 +115,7 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter { // 로�
 
         // JSON 응답 반환
         new ObjectMapper().writeValue(response.getWriter(), tokenDTO);
-        response.addCookie(refreshTokenCookie);
+      response.addCookie(refreshTokenCookie);
 
         log.info("[LoginFilter/successfulAuthentication] 7. JWT 토큰 HTTP 헤더 및 쿠키 설정 완료");
     }
