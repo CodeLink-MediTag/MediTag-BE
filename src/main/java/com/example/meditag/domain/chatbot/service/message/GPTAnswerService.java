@@ -8,9 +8,6 @@ import com.example.meditag.domain.alarm.repository.AlarmRepository;
 import com.example.meditag.domain.calendar.entity.Calendar;
 import com.example.meditag.domain.medicine.entity.Medicine;
 import com.example.meditag.domain.medicine.repository.MedicineRepository;
-import com.example.meditag.global.error.exception.CustomException;
-import com.example.meditag.global.error.exception.ErrorCode;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -48,7 +45,31 @@ public class GPTAnswerService {
 
         LocalDate today = LocalDate.now();
 
-        if (message.matches(".*(다른|또).*아침약.*(있어|남았어|먹어야).*")) {
+        // ✅ 등록된 약 이름만 보여주는 처리 추가
+        if (message.matches(".*(지금|현재|등록).*약.*(뭐|무엇|있어).*")) {
+            if (medicines.isEmpty()) {
+                return "현재 등록된 약이 없습니다.";
+            }
+
+            List<String> nameList = medicines.stream()
+                    .map(Medicine::getName)
+                    .distinct()
+                    .collect(Collectors.toList());
+
+            String formattedNames;
+            if (nameList.size() == 1) {
+                formattedNames = nameList.get(0);
+            } else if (nameList.size() == 2) {
+                formattedNames = nameList.get(0) + "와 " + nameList.get(1);
+            } else {
+                formattedNames = String.join(", ", nameList.subList(0, nameList.size() - 1))
+                        + ", 그리고 " + nameList.get(nameList.size() - 1);
+            }
+
+            return String.format("현재 등록된 약은 %s예요.", formattedNames);
+        }
+
+        if (message.matches(".*(다른|또).*아침약.*(있어|남았어|먹어야).*") ) {
             List<Alarm> morningAlarms = alarms.stream()
                     .filter(alarm -> alarm.getCalendar().getDate().isEqual(today))
                     .filter(alarm -> alarm.getDosageTime().equals("아침"))
@@ -104,11 +125,11 @@ public class GPTAnswerService {
 
         try {
             String response = openAiService.sendMessageToOpenAi(promptBuilder.toString());
-            JsonNode json = objectMapper.readTree(response);
-            return json.get("choices").get(0).get("message").get("content").asText();
+            // ✅ JSON 파싱 대신 GPT의 응답을 그대로 반환
+            return response;
         } catch (Exception e) {
             log.error("OpenAI 응답 파싱 실패: {}", e.getMessage());
-            throw new CustomException(ErrorCode.OPENAI_PARSE_ERROR);
+            return "답변 생성 중 오류가 발생했어요. 다시 한번 말씀해주시겠어요?";
         }
     }
 
@@ -155,12 +176,10 @@ public class GPTAnswerService {
         todayPrompt.append("\n사용자 질문: ").append(message);
 
         try {
-            String response = openAiService.sendMessageToOpenAi(todayPrompt.toString());
-            JsonNode json = objectMapper.readTree(response);
-            return json.get("choices").get(0).get("message").get("content").asText();
+            return openAiService.sendMessageToOpenAi(todayPrompt.toString());
         } catch (Exception e) {
             log.error("OpenAI 응답 파싱 실패: {}", e.getMessage());
-            throw new CustomException(ErrorCode.OPENAI_PARSE_ERROR);
+            return "답변 생성 중 오류가 발생했어요. 다시 한번 말씀해주시겠어요?";
         }
     }
 }
