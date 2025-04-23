@@ -30,8 +30,13 @@ public enum ErrorCode {
     // 인증 관련
     TOKEN_EXPIRED(HttpStatus.UNAUTHORIZED, "토큰이 만료되었습니다."),
     TOKEN_INVALID(HttpStatus.UNAUTHORIZED, "유효하지 않은 토큰입니다."),
-    TOKEN_MISSING(HttpStatus.UNAUTHORIZED, "토큰이 제공되지 않았습니다.");
+    TOKEN_MISSING(HttpStatus.UNAUTHORIZED, "토큰이 제공되지 않았습니다."),
 
+    OPENAI_PARSE_ERROR(HttpStatus.BAD_REQUEST, "해당 날짜를 찾을 수 없습니다."),
+
+    GUARDIAN_NOT_FOUND(HttpStatus.BAD_REQUEST, "보호자를 찾을 수 없습니다.");
+    //보호자 관련
+    //GUARDIAN_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 보호자입니다.");
     private final HttpStatus status;
     private final String message;
 }
