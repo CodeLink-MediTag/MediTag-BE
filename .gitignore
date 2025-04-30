@@ -42,4 +42,3 @@ application_secret.properties
 
 #firebase 키
 /src/main/resources/meditag-fea95-firebase-adminsdk-fbsvc-b3ae7e8236.json
-
