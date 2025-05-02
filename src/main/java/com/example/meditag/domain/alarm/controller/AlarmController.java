@@ -5,12 +5,14 @@ import com.example.meditag.domain.alarm.service.AlarmService;
 import com.example.meditag.domain.auth.dto.CustomUserDetails;
 import com.example.meditag.domain.member.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.PatchMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 
 @RestController
 @RequestMapping("/api/medicines")
@@ -19,12 +21,18 @@ public class AlarmController implements AlarmApi {
 
     private final AlarmService alarmService;
     // 복용 여부 API
-    @PatchMapping("/{medicineId}/alarms/{alarmId}/taking")
-    public ResponseEntity<String> toggleTaking(@AuthenticationPrincipal CustomUserDetails customUserDetails,
-                                               @PathVariable("medicineId") Long medicineId,
-                                               @PathVariable("alarmId") Long alarmId) {
+    @PatchMapping("/{medicineId}/alarms/taking")
+    public ResponseEntity<String> toggleTakingByType(
+            @AuthenticationPrincipal CustomUserDetails customUserDetails,
+            @PathVariable("medicineId") Long medicineId,
+            @RequestParam(value = "dosageTime", required = false) String dosageTime,
+            @RequestParam(value = "alarmTime", required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime alarmTime,
+            @RequestParam("date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
 
-        alarmService.toggleTaking(customUserDetails.getUsername(), medicineId, alarmId);
+        alarmService.toggleTakingByType(
+                customUserDetails.getUsername(), medicineId, date, dosageTime, alarmTime
+        );
 
         return ResponseEntity.ok("복용 여부가 변경되었습니다.");
     }

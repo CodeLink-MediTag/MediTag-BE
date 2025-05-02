@@ -38,15 +38,34 @@ public class AlarmService {
 
     // 복용 여부 API
     @Transactional
-    public AlarmResponseDTO toggleTaking (String username, Long medicineId, Long alarmId) {
+
+    public AlarmResponseDTO toggleTakingByType(
+            String username,
+            Long medicineId,
+            LocalDate date,
+            String dosageTime,
+            LocalDateTime alarmTime) {
+
+
         Member member = memberRepository.findByUsername(username)
                 .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_NOT_FOUND));
 
         Medicine medicine = medicineRepository.findById(medicineId)
                 .orElseThrow(() -> new CustomException(ErrorCode.MEDICINE_NOT_FOUND));
 
-        Alarm alarm = alarmRepository.findById(alarmId)
-                .orElseThrow(() -> new CustomException(ErrorCode.ALARM_NOT_FOUND));
+        Calendar calendar = calendarRepository.findByMedicineAndDate(medicine, date)
+                .orElseThrow(() -> new CustomException(ErrorCode.CALENDAR_NOT_FOUND));
+
+        Alarm alarm;
+        if (medicine.isPrescribed()) {
+            if (dosageTime == null) throw new CustomException(ErrorCode.SAMPLE_ERROR);
+            alarm = alarmRepository.findByCalendarAndDosageTime(calendar, dosageTime)
+                    .orElseThrow(() -> new CustomException(ErrorCode.ALARM_NOT_FOUND));
+        } else {
+            if (alarmTime == null) throw new CustomException(ErrorCode.SAMPLE_ERROR);
+            alarm = alarmRepository.findByCalendarAndAlarmTime(calendar, alarmTime)
+                    .orElseThrow(() -> new CustomException(ErrorCode.ALARM_NOT_FOUND));
+        }
 
         boolean previousState = alarm.isTaking();
         alarm.toggleTaking();
@@ -56,6 +75,7 @@ public class AlarmService {
 
             sendNotificationToGuardians(member, medicine.getName());
         }
+
         alarmRepository.save(alarm);
 
         return AlarmMapper.toAlarmResponseDTO(alarm);
