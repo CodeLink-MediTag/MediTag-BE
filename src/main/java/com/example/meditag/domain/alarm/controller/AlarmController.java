@@ -3,6 +3,7 @@ package com.example.meditag.domain.alarm.controller;
 import com.example.meditag.domain.alarm.controller.api.AlarmApi;
 import com.example.meditag.domain.alarm.service.AlarmService;
 import com.example.meditag.domain.auth.dto.CustomUserDetails;
+import com.example.meditag.domain.member.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
@@ -19,7 +20,6 @@ import java.time.LocalTime;
 public class AlarmController implements AlarmApi {
 
     private final AlarmService alarmService;
-
     // 복용 여부 API
     @PatchMapping("/{medicineId}/alarms/taking")
     public ResponseEntity<String> toggleTakingByType(
