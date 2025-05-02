@@ -251,15 +251,17 @@ public class MedicineRegisterService {
     private int extractDaysFromText(String message) {
         message = message.replaceAll("[\\s]", "");
         if (message.contains("일주일") || message.contains("한주") || message.contains("1주") || message.contains("1주일")) return 7;
-        if (message.contains("이주일") || message.contains("2주") || message.contains("이주") || message.contains("2주일")) return 14;
+        if (message.contains("이주일") || message.contains("2주") || message.contains("이 주") || message.contains("2주일")) return 14;
         if (message.contains("삼일") || message.contains("3일") || message.contains("삼 일")) return 3;
+        if (message.contains("사일") || message.contains("4일") || message.contains("사 일")) return 4;
         if (message.contains("오일") || message.contains("5일") || message.contains("오 일")) return 5;
-        if (message.contains("한달") || message.contains("30일") || message.contains("삼십일")) return 30;
         if (message.contains("십오일") || message.contains("보름") || message.contains("15일")) return 15;
+        if (message.contains("한 달") || message.contains("30일") || message.contains("삼십일")) return 30;
         Matcher m = Pattern.compile("(\\d+)[일일간]").matcher(message);
         if (m.find()) return Integer.parseInt(m.group(1));
         return 1;
     }
+
 
     private int extractFrequencyFromText(String message) {
         message = message.replaceAll("[\\s]", "");

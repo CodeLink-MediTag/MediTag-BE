@@ -103,12 +103,19 @@ public class AlarmSchedulerService {
             log.info("[AlarmSchedulerService] 알림 취소 완료 - 알림 ID: {}", alarmId);
         }
     }
-    //특정 약 모든 알람 취소 로직( 가져다 쓰면 알람 없어짐 )
-//    public void cancelMedicineAlarms(Long medicineId) {
-//        List<Alarm> alarms = alarmRepository.findByMedicineId(medicineId); // 이거 잘못됨
-//        for (Alarm alarm : alarms) {
-//            cancelAlarm(alarm.getId());
-//        }
-//        log.info("[AlarmSchedulerService] 약(ID: {})의 모든 알림이 취소되었습니다.", medicineId);
-//    }
+    //특정알람 취소
+    public void cancelMedicineAlarms(Long medicineId) {
+        // scheduledTasks에서 해당 약의 알람만 찾아서 취소
+        scheduledTasks.forEach((alarmId, scheduledTask) -> {
+            // 알람 조회
+            alarmRepository.findById(alarmId).ifPresent(alarm -> {
+                // 해당 알람이 특정 약의 것인지 확인
+                if (alarm.getCalendar().getMedicine().getId().equals(medicineId)) {
+                    cancelAlarm(alarmId);
+                }
+            });
+        });
+
+        log.info("[AlarmSchedulerService] 약(ID: {})의 모든 알림이 취소되었습니다.", medicineId);
+    }
 }
