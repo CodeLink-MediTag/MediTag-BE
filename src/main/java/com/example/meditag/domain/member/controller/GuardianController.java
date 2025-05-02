@@ -1,6 +1,7 @@
 package com.example.meditag.domain.member.controller;
 
 import com.example.meditag.domain.auth.dto.CustomUserDetails;
+import com.example.meditag.domain.member.controller.api.GuardianApi;
 import com.example.meditag.domain.member.dto.request.GuardianRequestDTO;
 import com.example.meditag.domain.member.dto.response.GuardianResponseDTO;
 import com.example.meditag.domain.member.service.GuardianService;
@@ -21,7 +22,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 @Slf4j
 @Tag(name = "Guardian API", description = "보호자 관리 API")
-public class GuardianController {
+public class GuardianController implements GuardianApi {
 
     private final GuardianService guardianService;
 
