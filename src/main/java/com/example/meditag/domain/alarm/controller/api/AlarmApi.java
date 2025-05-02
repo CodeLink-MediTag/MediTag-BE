@@ -19,7 +19,13 @@ import java.time.LocalTime;
 @Tag(name = "알림 관리", description = "알림 관련 API")
 public interface AlarmApi {
 
-    @Operation(summary = "복용 여부 변경", description = "약의 복용 여부를 시간대나 알람 기준으로 변경합니다.")
+    @Operation(summary = "복용 여부 변경", description = "약의 복용 여부를 시간대나 알람 기준으로 변경합니다.\n" +
+            "```json\n" +
+            "예시\n" +
+            "  \"dosageTime\": \"아침\" or \"점심\" or \"저녁\"\n" +
+            "  \"alarmTime\": \"2025-04-25T08:00:00\"\n" +
+            "  \"date\": \"2025-04-25\"\n" +
+            "```")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "성공"),
             @ApiResponse(responseCode = "404", description = "해당 알림 없음")

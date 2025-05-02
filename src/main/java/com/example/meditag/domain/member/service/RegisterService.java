@@ -11,7 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class RegisterService {
+public class    RegisterService {
 
     private final MemberRepository memberRepository;  // 사용자 정보를 저장할 저장소 (Repository)
     private final BCryptPasswordEncoder bCryptPasswordEncoder;  // 비밀번호 암호화를 위한 BCryptPasswordEncoder
