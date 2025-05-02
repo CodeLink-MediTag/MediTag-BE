@@ -1,7 +1,13 @@
 package com.example.meditag.domain.chatbot.service;
 
+import com.example.meditag.domain.chatbot.entity.ChatSession;
+import com.example.meditag.domain.chatbot.entity.Message;
+import com.example.meditag.domain.chatbot.repository.ChatSessionRepository;
+import com.example.meditag.domain.chatbot.repository.MessageRepository;
 import com.example.meditag.domain.chatbot.service.message.*;
 import com.example.meditag.domain.chatbot.service.message.register.MedicineRegisterService;
+import com.example.meditag.global.error.exception.CustomException;
+import com.example.meditag.global.error.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -12,59 +18,105 @@ import java.util.concurrent.ConcurrentHashMap;
 @RequiredArgsConstructor
 public class MessageProcessorService {
 
+    private final MessageRepository messageRepository;
+    private final ChatSessionRepository chatSessionRepository;
+
     private final DosageToggleService dosageToggleService;
     private final MedicineRegisterService medicineRegisterService;
     private final RecordingPlayService recordingPlayService;
     private final DateMedicineInquiryService dateMedicineInquiryService;
     private final GPTAnswerService gptAnswerService;
 
-    // 사용자의 마지막 미완료 메시지 저장 (예: 약 이름이나 시간대 미포함)
     private final Map<String, String> lastIncompleteDosageMessage = new ConcurrentHashMap<>();
 
     public String processMessage(String username, Long chatSessionId, String message) {
 
-        // 우선 약 등록 세션 중일 경우 처리
-        if (medicineRegisterService.isInProgress(username)) {
-            return medicineRegisterService.execute(username, message);
-        }
+        ChatSession session = chatSessionRepository.findById(chatSessionId)
+                .orElseThrow(() -> new CustomException(ErrorCode.CHAT_SESSION_NOT_FOUND));
 
-        // 약 복용 여부 변경 처리
-        if (dosageToggleService.isApplicable(message)) {
-            String result = dosageToggleService.execute(username, message);
-            if (isIncompleteResponse(result)) {
-                lastIncompleteDosageMessage.put(username, message);
-            } else {
-                lastIncompleteDosageMessage.remove(username);
+        messageRepository.save(Message.builder()
+                .chatSession(session)
+                .sender(Message.Sender.USER)
+                .content(message)
+                .build());
+
+        try {
+            if (medicineRegisterService.isInProgress(username)) {
+                String result = medicineRegisterService.execute(username, message);
+                saveBotMessage(session, result);
+                return result;
             }
+
+            if (dosageToggleService.isApplicable(message)) {
+                String result = dosageToggleService.execute(username, message);
+                if (isIncompleteResponse(result)) {
+                    lastIncompleteDosageMessage.put(username, message);
+                } else {
+                    lastIncompleteDosageMessage.remove(username);
+                }
+                saveBotMessage(session, result);
+                return result;
+            }
+
+            if (isTimeOnlyMessage(message) && lastIncompleteDosageMessage.containsKey(username)) {
+                String priorMessage = lastIncompleteDosageMessage.get(username);
+                String combinedMessage = priorMessage + " " + message;
+                String result = dosageToggleService.execute(username, combinedMessage);
+                lastIncompleteDosageMessage.remove(username);
+                saveBotMessage(session, result);
+                return result;
+            }
+
+            if (medicineRegisterService.isApplicable(message)) {
+                try {
+                    String result = medicineRegisterService.execute(username, message);
+                    saveBotMessage(session, result);
+                    return result;
+                } catch (Exception e) {
+                    String fallback = gptAnswerService.execute(username, chatSessionId,
+                            "사용자가 약 등록을 원하지만 이해하지 못했어. 다음 질문을 자연스럽게 해줘.");
+                    saveBotMessage(session, fallback);
+                    return fallback;
+                }
+            }
+
+            if (recordingPlayService.isApplicable(message)) {
+                String result = recordingPlayService.execute(username, message);
+                saveBotMessage(session, result);
+                return result;
+            }
+
+            if (dateMedicineInquiryService.isApplicable(message)) {
+                try {
+                    String result = dateMedicineInquiryService.execute(username, message);
+                    saveBotMessage(session, result);
+                    return result;
+                } catch (Exception e) {
+                    String fallback = gptAnswerService.execute(username, chatSessionId,
+                            "사용자가 날짜를 말했는데 이해하지 못했어. 무슨 날짜를 원하는지 다시 물어봐줘.");
+                    saveBotMessage(session, fallback);
+                    return fallback;
+                }
+            }
+
+            String result = gptAnswerService.execute(username, chatSessionId, message);
+            saveBotMessage(session, result);
             return result;
-        }
 
-        // 시간대만으로 메시지가 왔을 때 이전 메시지와 결합 처리
-        if (isTimeOnlyMessage(message) && lastIncompleteDosageMessage.containsKey(username)) {
-            String priorMessage = lastIncompleteDosageMessage.get(username);
-            String combinedMessage = priorMessage + " " + message;
-            String result = dosageToggleService.execute(username, combinedMessage);
-            lastIncompleteDosageMessage.remove(username);
-            return result;
+        } catch (Exception e) {
+            String fallback = gptAnswerService.execute(username, chatSessionId,
+                    "사용자의 말을 이해하지 못했거나 오류가 발생했어. 자연스럽게 다시 물어봐줘.");
+            saveBotMessage(session, fallback);
+            return fallback;
         }
+    }
 
-        // 약 알림 등록 시작
-        if (medicineRegisterService.isApplicable(message)) {
-            return medicineRegisterService.execute(username, message);
-        }
-
-        // 주의사항 녹음 재생
-        if (recordingPlayService.isApplicable(message)) {
-            return recordingPlayService.execute(username, message);
-        }
-
-        // 특정 날짜의 약 알림 조회
-        if (dateMedicineInquiryService.isApplicable(message)) {
-            return dateMedicineInquiryService.execute(username, message);
-        }
-
-        // 기타 메시지는 GPT로 처리
-        return gptAnswerService.execute(username, chatSessionId, message);
+    private void saveBotMessage(ChatSession session, String content) {
+        messageRepository.save(Message.builder()
+                .chatSession(session)
+                .sender(Message.Sender.BOT)
+                .content(content)
+                .build());
     }
 
     private boolean isTimeOnlyMessage(String message) {
