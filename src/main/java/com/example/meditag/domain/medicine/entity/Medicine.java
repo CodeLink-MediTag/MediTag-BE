@@ -57,13 +57,16 @@ public class Medicine extends BaseTimeEntity {
     @OneToMany(mappedBy = "medicine", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Calendar> calendars = new ArrayList<>();
 
-    public void update(MedicineCreateRequestDTO dto) {
+    public void update(MedicineCreateRequestDTO dto, String imageUrl) {
         this.name = dto.getName();
         this.characteristic = dto.getCharacteristic();
         this.startDate = dto.getStartDate();
         this.duration = dto.getDuration();
         this.frequency = dto.getFrequency();
         this.prescribed = dto.isPrescribed();
+        if (imageUrl != null) {
+            this.imageUrl = imageUrl;
+        }
     }
 
 }
