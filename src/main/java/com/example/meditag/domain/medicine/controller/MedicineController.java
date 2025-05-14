@@ -31,6 +31,25 @@ public class MedicineController implements MedicineApi {
         return ResponseEntity.ok("약 정보와 알림이 성공적으로 저장되었습니다.");
     }
 
+    // 복약 알림 수정 API
+    @PatchMapping(value = "/{medicineId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<String> updateMedicine(@AuthenticationPrincipal CustomUserDetails customUserDetails,
+                                                 @PathVariable Long medicineId,
+                                                 @RequestPart("data") MedicineCreateRequestDTO requestDto,
+                                                 @RequestPart(value = "file", required = false) MultipartFile file) {
+        medicineService.updateMedicine(customUserDetails.getUsername(), medicineId, requestDto, file);
+        return ResponseEntity.ok("약 정보와 알림이 성공적으로 수정되었습니다.");
+    }
+
+    // 복약 알림 삭제 API
+    @DeleteMapping("/{medicineId}")
+    public ResponseEntity<String> deleteMedicine(@AuthenticationPrincipal CustomUserDetails customUserDetails,
+                                                 @PathVariable Long medicineId
+    ) {
+        medicineService.deleteMedicine(customUserDetails.getUsername(), medicineId);
+        return ResponseEntity.ok("약 정보와 알림이 성공적으로 삭제되었습니다.");
+    }
+
     // 특정 날짜 복약 정보 조회 API
     @GetMapping
     public ResponseEntity<MedicineGetDateResponseDTO> getMedicinesByDate(@AuthenticationPrincipal CustomUserDetails customUserDetails,
