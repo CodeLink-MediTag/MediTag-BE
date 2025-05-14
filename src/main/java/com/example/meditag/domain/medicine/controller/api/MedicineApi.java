@@ -13,9 +13,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestPart;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 @Tag(name = "약 관리", description = "약 관련 API")
@@ -66,6 +64,34 @@ public interface MedicineApi {
             @RequestPart(value = "data") MedicineCreateRequestDTO requestDto,
             @Parameter(description = "약 이미지")
             @RequestPart(value = "file", required = false) MultipartFile file
+    );
+
+    @Operation(summary = "약 정보 수정", description = "기존의 약 정보를 수정합니다.\n" +
+            "수정 시 `medicineId`를 경로로 전달하고, `data`에 수정할 정보와 선택적으로 이미지 파일을 함께 전달합니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "수정 성공"),
+            @ApiResponse(responseCode = "404", description = "약 정보 없음"),
+            @ApiResponse(responseCode = "400", description = "요청 형식 오류")
+    })
+    @PatchMapping(value = "/{medicineId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    ResponseEntity<String> updateMedicine(
+            @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails customUserDetails,
+            @Parameter(description = "약 ID", required = true) @PathVariable Long medicineId,
+            @Parameter(description = "수정할 약 정보", required = true)
+            @RequestPart("data") MedicineCreateRequestDTO requestDto,
+            @Parameter(description = "수정할 약 이미지")
+            @RequestPart(value = "file", required = false) MultipartFile file
+    );
+
+    @Operation(summary = "약 정보 삭제", description = "지정한 ID의 약 정보를 삭제합니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "삭제 성공"),
+            @ApiResponse(responseCode = "404", description = "약 정보 없음")
+    })
+    @DeleteMapping("/{medicineId}")
+    ResponseEntity<String> deleteMedicine(
+            @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails customUserDetails,
+            @Parameter(description = "삭제할 약 ID", required = true) @PathVariable Long medicineId
     );
 
     @Operation(summary = "날짜별 약 정보 조회", description = "특정 날짜의 약 정보를 조회합니다.\n" +
