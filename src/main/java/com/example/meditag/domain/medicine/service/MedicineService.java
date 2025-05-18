@@ -219,8 +219,37 @@ public class MedicineService {
     }
 
     // 약 알림 수정 API
+    @Transactional
+    public MedicineResponseDTO updateMedicine(String username, Long medicineId, MedicineCreateRequestDTO requestDto, MultipartFile file) {
+        Member member = memberRepository.findByUsername(username)
+                .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_NOT_FOUND));
+
+        Medicine medicine = medicineRepository.findByIdAndMember(medicineId, member)
+                .orElseThrow(() -> new CustomException(ErrorCode.MEDICINE_NOT_FOUND));
+
+        // 기존과 동일하게 이미지 업로드 처리
+        String imageUrl = uploadImageIfPresent(file);
+
+        // 엔티티 업데이트
+        medicine.update(requestDto, imageUrl);
+
+        medicineRepository.save(medicine);
+
+        return MedicineMapper.toMedicineResponseDTO(medicine);
+    }
 
     // 약 알림 삭제 API
+    @Transactional
+    public void deleteMedicine(String username, Long medicineId) {
+        Member member = memberRepository.findByUsername(username)
+                .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_NOT_FOUND));
+
+        Medicine medicine = medicineRepository.findByIdAndMember(medicineId, member)
+                .orElseThrow(() -> new CustomException(ErrorCode.MEDICINE_NOT_FOUND));
+
+        medicineRepository.delete(medicine);
+    }
+
 
     // Presigned URL만 생성하여 반환하는 메서드 추가
     public String getPresignedUrl(String filename) {
