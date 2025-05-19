@@ -3,21 +3,25 @@ package com.example.meditag.domain.jwt.util;
 import io.jsonwebtoken.Jwts;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Component // 스프링에서 관리되는 빈으로 등록
 public class JWTUtil {
 
     private SecretKey secretKey; // JWT 서명에 사용할 비밀 키
+    private final StringRedisTemplate redisTemplate; // Redis 사용
 
-    public JWTUtil(@Value("${spring.jwt.secret}") String secret) {
+    public JWTUtil(@Value("${spring.jwt.secret}") String secret, StringRedisTemplate redisTemplate) {
         secretKey = new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), Jwts.SIG.HS256.key().build().getAlgorithm());
+        this.redisTemplate = redisTemplate;
         log.info("[JWTUtil] JWT secretKey 생성: {}", secretKey);
     }
 
@@ -43,6 +47,7 @@ public class JWTUtil {
                 .get("role", String.class);
     }
 
+
     // 토큰에서 provider 추출
     public String getProvider(String token) {
         log.info("[JWTUtil/getProvider] 토큰에서 provider 추출, 토큰: {}", token);
@@ -63,6 +68,18 @@ public class JWTUtil {
                 .parseSignedClaims(token)
                 .getPayload()
                 .get("providerId", String.class);
+    }
+
+    // 블랙리스트 확인 - 로그아웃 된거 확인
+    public boolean isBlacklisted(String token) {
+        String key = "blacklist:" + token;
+        return Boolean.TRUE.equals(redisTemplate.hasKey(key));
+    }
+    // 토큰 블랙리스트 추가 (로그아웃 시 사용)
+    public void addToBlacklist(String token, long expirationMillis) {
+        String key = "blacklist:" + token;
+        redisTemplate.opsForValue().set(key, "true", expirationMillis, TimeUnit.MILLISECONDS);
+        log.info("[JWTUtil] 블랙리스트(로그아웃)에 토큰 추가: {}, 만료 시간: {} ms", token, expirationMillis);
     }
 
     // 토큰이 만료되었는지 확인

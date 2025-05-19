@@ -36,7 +36,7 @@ public interface AuthApi {
             @Parameter(description = "회원 정보", required = true) LoginDTO loginDTO
     );
 
-    @Operation(summary = "로그아웃", description = "로그아웃을 수행하고 JWT 토큰을 삭제합니다.")
+    @Operation(summary = "로그아웃", description = "로그아웃을 수행하고 JWT 토큰을 삭제합니다(accessToken 넣어야함).")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "로그아웃 성공",
                     content = @Content(schema = @Schema(type = "string", example = "로그아웃 되었습니다."))),
