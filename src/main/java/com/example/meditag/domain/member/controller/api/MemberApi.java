@@ -1,5 +1,6 @@
 package com.example.meditag.domain.member.controller.api;
 
+import com.example.meditag.domain.auth.dto.CustomUserDetails;
 import com.example.meditag.domain.member.dto.request.RegisterDTO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -9,6 +10,10 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 
 import java.util.Map;
 
@@ -35,4 +40,17 @@ public interface MemberApi {
     ResponseEntity<Map<String, RegisterDTO>> register(
             @Parameter(description = "회원 정보", required = true) RegisterDTO registerDTO
     );
+
+    @Operation(summary = "회원 수정", description = "로그인된 회원 정보를 수정합니다.")
+    @PutMapping("/me")
+    ResponseEntity<String> updateMember(@AuthenticationPrincipal CustomUserDetails userDetails, RegisterDTO registerDTO);
+
+    @Operation(summary = "회원 삭제", description = "로그인된 회원을 삭제합니다.")
+    @DeleteMapping("/me")
+    ResponseEntity<String> deleteMember(@AuthenticationPrincipal CustomUserDetails userDetails);
+
+    @Operation(summary = "회원 조회", description = "로그인된 회원 정보를 조회합니다.")
+    @GetMapping("/me")
+    ResponseEntity<RegisterDTO> getMember(@AuthenticationPrincipal CustomUserDetails userDetails);
+
 }
