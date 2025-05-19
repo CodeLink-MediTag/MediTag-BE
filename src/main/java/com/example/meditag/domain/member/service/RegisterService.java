@@ -11,7 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class    RegisterService {
+public class RegisterService {
 
     private final MemberRepository memberRepository;  // 사용자 정보를 저장할 저장소 (Repository)
     private final BCryptPasswordEncoder bCryptPasswordEncoder;  // 비밀번호 암호화를 위한 BCryptPasswordEncoder
@@ -46,6 +46,42 @@ public class    RegisterService {
         // 저장
         memberRepository.save(member);
 
+        return MemberMapper.toRegisterDTO(member);
+    }
+
+    // 회원 수정 API
+    @Transactional
+    public void updateMember(String username, RegisterDTO dto) {
+        Member member = memberRepository.findByUsername(username)
+                .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_NOT_FOUND));
+
+        String encodedPassword = dto.getPassword() != null ? bCryptPasswordEncoder.encode(dto.getPassword()) : null;
+
+        member.update(
+                dto.getUsername(),
+                dto.getName(),
+                dto.getPhone(),
+                encodedPassword,
+                "ROLE_USER",  // 또는 dto.getRole() 로 유동적 처리 가능
+                dto.getFirebasetoken()
+        );
+
+        memberRepository.save(member);
+    }
+
+    // 회원 삭제 API
+    @Transactional
+    public void deleteMember(String username) {
+        Member member = memberRepository.findByUsername(username)
+                .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_NOT_FOUND));
+        memberRepository.delete(member);
+    }
+
+    // 회원 조회 API
+    @Transactional(readOnly = true)
+    public RegisterDTO getMemberByUsername(String username) {
+        Member member = memberRepository.findByUsername(username)
+                .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_NOT_FOUND));
         return MemberMapper.toRegisterDTO(member);
     }
 }
