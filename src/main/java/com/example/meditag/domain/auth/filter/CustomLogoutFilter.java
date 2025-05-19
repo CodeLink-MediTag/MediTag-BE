@@ -47,8 +47,13 @@ public class CustomLogoutFilter extends OncePerRequestFilter {
 
             String token = authorization.split(" ")[1];
 
+            Long expirationMillis = 60 * 60 * 24L;
+
             // 토큰에서 사용자 정보 추출
             String username = jwtUtil.getUsername(token);
+
+            //로그아웃 시 레디스에 블랙리스트 올림( accesstoken 무력화하기 위해)
+            jwtUtil.addToBlacklist(token, expirationMillis);
 
             // Redis에서 RefreshToken 삭제
             refreshTokenRedisRepository.deleteRefreshToken(username);
