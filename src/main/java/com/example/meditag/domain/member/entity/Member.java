@@ -62,4 +62,13 @@ public class Member extends BaseTimeEntity {
     public void updateLastLoginAt() {
         this.lastLoginAt = LocalDateTime.now();
     }
+
+    public void update(String username, String name, String phone, String password, String role, String firebasetoken) {
+        if (username != null) this.username = username;
+        if (name != null) this.name = name;
+        if (phone != null) this.phone = phone;
+        if (password != null) this.password = password;
+        if (role != null) this.role = role;
+        if (firebasetoken != null) this.firebasetoken = firebasetoken;
+    }
 }

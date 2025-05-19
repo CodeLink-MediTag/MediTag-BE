@@ -55,17 +55,18 @@ public class RegisterService {
         Member member = memberRepository.findByUsername(username)
                 .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_NOT_FOUND));
 
-        Member updated = Member.builder()
-                .id(member.getId()) // 유지
-                .username(dto.getUsername())
-                .name(dto.getName())
-                .phone(dto.getPhone())
-                .password(bCryptPasswordEncoder.encode(dto.getPassword()))
-                .role("ROLE_USER")
-                .firebasetoken(dto.getFirebasetoken())
-                .build();
+        String encodedPassword = dto.getPassword() != null ? bCryptPasswordEncoder.encode(dto.getPassword()) : null;
 
-        memberRepository.save(updated);
+        member.update(
+                dto.getUsername(),
+                dto.getName(),
+                dto.getPhone(),
+                encodedPassword,
+                "ROLE_USER",  // 또는 dto.getRole() 로 유동적 처리 가능
+                dto.getFirebasetoken()
+        );
+
+        memberRepository.save(member);
     }
 
     // 회원 삭제 API
