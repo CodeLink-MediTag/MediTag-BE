@@ -219,8 +219,93 @@ public class MedicineService {
     }
 
     // 약 알림 수정 API
+    @Transactional
+    public MedicineResponseDTO updateMedicine(String username, Long medicineId, MedicineCreateRequestDTO requestDto, MultipartFile file) {
+        Member member = memberRepository.findByUsername(username)
+                .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_NOT_FOUND));
+
+        Medicine medicine = medicineRepository.findByIdAndMember(medicineId, member)
+                .orElseThrow(() -> new CustomException(ErrorCode.MEDICINE_NOT_FOUND));
+
+        // 알람 스케줄링 취소
+        alarmSchedulerService.cancelMedicineAlarms(medicineId);
+
+        // 기존 캘린더 및 알람 삭제
+        List<Calendar> calendars = calendarRepository.findByMedicine(medicine);
+        calendarRepository.deleteAll(calendars);
+
+        // 이미지 업로드 처리
+        String imageUrl = uploadImageIfPresent(file);
+        medicine.update(requestDto, imageUrl);
+        medicineRepository.save(medicine);
+
+        // 캘린더 및 알람 재등록 (createMedicine과 유사한 로직 복붙 또는 별도 메서드로 추출 가능)
+        List<Calendar> newCalendars = new ArrayList<>();
+        LocalDate startDate = requestDto.getStartDate();
+        int duration = requestDto.getDuration();
+
+        for (int i = 0; i < duration; i++) {
+            LocalDate medicineDate = startDate.plusDays(i);
+            Calendar calendar = Calendar.builder()
+                    .date(medicineDate)
+                    .medicine(medicine)
+                    .build();
+            newCalendars.add(calendar);
+        }
+        calendarRepository.saveAll(newCalendars);
+
+        List<Alarm> newAlarms = new ArrayList<>();
+        for (Calendar calendar : newCalendars) {
+            if (requestDto.isPrescribed()) {
+                List<String> dosageTimes = requestDto.getDosageTimes();
+                List<String> alarmTimes = requestDto.getAlarmTimes();
+                for (int i = 0; i < dosageTimes.size(); i++) {
+                    LocalTime time = LocalTime.parse(alarmTimes.get(i));
+                    Alarm alarm = Alarm.builder()
+                            .calendar(calendar)
+                            .dosageTime(dosageTimes.get(i))
+                            .alarmTime(LocalDateTime.of(calendar.getDate(), time))
+                            .taking(false)
+                            .build();
+                    newAlarms.add(alarm);
+                }
+            } else {
+                for (String timeString : requestDto.getAlarmTimes()) {
+                    LocalTime time = LocalTime.parse(timeString);
+                    Alarm alarm = Alarm.builder()
+                            .calendar(calendar)
+                            .alarmTime(LocalDateTime.of(calendar.getDate(), time))
+                            .taking(false)
+                            .build();
+                    newAlarms.add(alarm);
+                }
+            }
+        }
+        alarmRepository.saveAll(newAlarms);
+        alarmSchedulerService.scheduleAlarms(medicine, newAlarms);
+
+        return MedicineMapper.toMedicineResponseDTO(medicine);
+    }
 
     // 약 알림 삭제 API
+    @Transactional
+    public void deleteMedicine(String username, Long medicineId) {
+        Member member = memberRepository.findByUsername(username)
+                .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_NOT_FOUND));
+
+        Medicine medicine = medicineRepository.findByIdAndMember(medicineId, member)
+                .orElseThrow(() -> new CustomException(ErrorCode.MEDICINE_NOT_FOUND));
+
+        // 알람 스케줄링 취소
+        alarmSchedulerService.cancelMedicineAlarms(medicineId);
+
+        // 캘린더 조회 후 삭제 (Cascade로 알람도 함께 삭제됨)
+        List<Calendar> calendars = calendarRepository.findByMedicine(medicine);
+        calendarRepository.deleteAll(calendars);
+
+        // 마지막으로 약 삭제
+        medicineRepository.delete(medicine);
+    }
 
     // Presigned URL만 생성하여 반환하는 메서드 추가
     public String getPresignedUrl(String filename) {

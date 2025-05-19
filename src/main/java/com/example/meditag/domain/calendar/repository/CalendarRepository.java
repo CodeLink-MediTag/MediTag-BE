@@ -20,4 +20,6 @@ public interface CalendarRepository extends JpaRepository<Calendar, Long> {
     List<Calendar> findByMedicine_Member_Username(String username);
 
     Optional<Calendar> findByMedicineAndDate(Medicine medicine, LocalDate date);
+
+    List<Calendar> findByMedicine(Medicine medicine);
 }
