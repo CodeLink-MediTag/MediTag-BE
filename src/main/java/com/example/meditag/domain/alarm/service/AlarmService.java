@@ -57,7 +57,7 @@ public class AlarmService {
                 .orElseThrow(() -> new CustomException(ErrorCode.CALENDAR_NOT_FOUND));
 
         Alarm alarm;
-        if (medicine.isPrescribed()) {
+        if (medicine.getPrescribed()) {
             if (dosageTime == null) throw new CustomException(ErrorCode.SAMPLE_ERROR);
             alarm = alarmRepository.findByCalendarAndDosageTime(calendar, dosageTime)
                     .orElseThrow(() -> new CustomException(ErrorCode.ALARM_NOT_FOUND));

@@ -2,6 +2,7 @@ package com.example.meditag.domain.medicine.controller.api;
 
 import com.example.meditag.domain.auth.dto.CustomUserDetails;
 import com.example.meditag.domain.medicine.dto.request.MedicineCreateRequestDTO;
+import com.example.meditag.domain.medicine.dto.request.MedicineUpdateRequestDto;
 import com.example.meditag.domain.medicine.dto.response.MedicineGetDateResponseDTO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -78,7 +79,7 @@ public interface MedicineApi {
             @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails customUserDetails,
             @Parameter(description = "약 ID", required = true) @PathVariable Long medicineId,
             @Parameter(description = "수정할 약 정보", required = true)
-            @RequestPart("data") MedicineCreateRequestDTO requestDto,
+            @RequestPart("data") MedicineUpdateRequestDto requestDto,
             @Parameter(description = "수정할 약 이미지")
             @RequestPart(value = "file", required = false) MultipartFile file
     );

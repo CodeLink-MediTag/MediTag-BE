@@ -4,6 +4,7 @@ import com.example.meditag.domain.alarm.entity.Alarm;
 import com.example.meditag.domain.alarm.repository.AlarmRepository;
 import com.example.meditag.domain.alarm.service.AlarmSchedulerService;
 import com.example.meditag.domain.medicine.dto.request.MedicineCreateRequestDTO;
+import com.example.meditag.domain.medicine.dto.request.MedicineUpdateRequestDto;
 import com.example.meditag.domain.medicine.dto.response.MedicineResponseDTO;
 import com.example.meditag.domain.medicine.dto.response.MedicineGetDateResponseDTO;
 import com.example.meditag.domain.medicine.entity.Medicine;
@@ -218,71 +219,76 @@ public class MedicineService {
                 .build();
     }
 
-    // 약 알림 수정 API
     @Transactional
-    public MedicineResponseDTO updateMedicine(String username, Long medicineId, MedicineCreateRequestDTO requestDto, MultipartFile file) {
+    public MedicineResponseDTO updateMedicine(String username, Long medicineId, MedicineUpdateRequestDto updateDto, MultipartFile file) {
         Member member = memberRepository.findByUsername(username)
                 .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_NOT_FOUND));
 
         Medicine medicine = medicineRepository.findByIdAndMember(medicineId, member)
                 .orElseThrow(() -> new CustomException(ErrorCode.MEDICINE_NOT_FOUND));
 
-        // 알람 스케줄링 취소
-        alarmSchedulerService.cancelMedicineAlarms(medicineId);
-
-        // 기존 캘린더 및 알람 삭제
-        List<Calendar> calendars = calendarRepository.findByMedicine(medicine);
-        calendarRepository.deleteAll(calendars);
-
         // 이미지 업로드 처리
         String imageUrl = uploadImageIfPresent(file);
-        medicine.update(requestDto, imageUrl);
+        medicine.update(updateDto, imageUrl);
         medicineRepository.save(medicine);
 
-        // 캘린더 및 알람 재등록 (createMedicine과 유사한 로직 복붙 또는 별도 메서드로 추출 가능)
-        List<Calendar> newCalendars = new ArrayList<>();
-        LocalDate startDate = requestDto.getStartDate();
-        int duration = requestDto.getDuration();
+        // 📌 알람 정보를 업데이트할지 판단
+        boolean shouldUpdateAlarms = updateDto.getAlarmTimes() != null && !updateDto.getAlarmTimes().isEmpty();
 
-        for (int i = 0; i < duration; i++) {
-            LocalDate medicineDate = startDate.plusDays(i);
-            Calendar calendar = Calendar.builder()
-                    .date(medicineDate)
-                    .medicine(medicine)
-                    .build();
-            newCalendars.add(calendar);
-        }
-        calendarRepository.saveAll(newCalendars);
+        if (shouldUpdateAlarms) {
+            // 알람 스케줄링 취소 및 기존 캘린더/알람 삭제
+            alarmSchedulerService.cancelMedicineAlarms(medicineId);
+            calendarRepository.deleteAll(calendarRepository.findByMedicine(medicine));
 
-        List<Alarm> newAlarms = new ArrayList<>();
-        for (Calendar calendar : newCalendars) {
-            if (requestDto.isPrescribed()) {
-                List<String> dosageTimes = requestDto.getDosageTimes();
-                List<String> alarmTimes = requestDto.getAlarmTimes();
-                for (int i = 0; i < dosageTimes.size(); i++) {
+            // 새 캘린더 생성
+            LocalDate startDate = updateDto.getStartDate() != null ? updateDto.getStartDate() : medicine.getStartDate();
+            int duration = updateDto.getDuration() != null ? updateDto.getDuration() : medicine.getDuration();
+
+            List<Calendar> newCalendars = new ArrayList<>();
+            for (int i = 0; i < duration; i++) {
+                LocalDate medicineDate = startDate.plusDays(i);
+                Calendar calendar = Calendar.builder()
+                        .date(medicineDate)
+                        .medicine(medicine)
+                        .build();
+                newCalendars.add(calendar);
+            }
+            calendarRepository.saveAll(newCalendars);
+
+            // 새 알람 생성
+            List<Alarm> newAlarms = new ArrayList<>();
+            Boolean prescribed = updateDto.getPrescribed() != null ? updateDto.getPrescribed() : medicine.getPrescribed();
+
+            if (prescribed != null && prescribed) {
+                List<String> dosageTimes = updateDto.getDosageTimes();
+                List<String> alarmTimes = updateDto.getAlarmTimes();
+                for (int i = 0; i < Math.min(dosageTimes.size(), alarmTimes.size()); i++) {
                     LocalTime time = LocalTime.parse(alarmTimes.get(i));
-                    Alarm alarm = Alarm.builder()
-                            .calendar(calendar)
-                            .dosageTime(dosageTimes.get(i))
-                            .alarmTime(LocalDateTime.of(calendar.getDate(), time))
-                            .taking(false)
-                            .build();
-                    newAlarms.add(alarm);
+                    for (Calendar calendar : newCalendars) {
+                        newAlarms.add(Alarm.builder()
+                                .calendar(calendar)
+                                .dosageTime(dosageTimes.get(i))
+                                .alarmTime(LocalDateTime.of(calendar.getDate(), time))
+                                .taking(false)
+                                .build());
+                    }
                 }
             } else {
-                for (String timeString : requestDto.getAlarmTimes()) {
-                    LocalTime time = LocalTime.parse(timeString);
-                    Alarm alarm = Alarm.builder()
-                            .calendar(calendar)
-                            .alarmTime(LocalDateTime.of(calendar.getDate(), time))
-                            .taking(false)
-                            .build();
-                    newAlarms.add(alarm);
+                for (Calendar calendar : newCalendars) {
+                    for (String timeString : updateDto.getAlarmTimes()) {
+                        LocalTime time = LocalTime.parse(timeString);
+                        newAlarms.add(Alarm.builder()
+                                .calendar(calendar)
+                                .alarmTime(LocalDateTime.of(calendar.getDate(), time))
+                                .taking(false)
+                                .build());
+                    }
                 }
             }
+
+            alarmRepository.saveAll(newAlarms);
+            alarmSchedulerService.scheduleAlarms(medicine, newAlarms);
         }
-        alarmRepository.saveAll(newAlarms);
-        alarmSchedulerService.scheduleAlarms(medicine, newAlarms);
 
         return MedicineMapper.toMedicineResponseDTO(medicine);
     }

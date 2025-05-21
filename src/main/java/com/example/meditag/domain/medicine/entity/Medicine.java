@@ -5,6 +5,7 @@ import com.example.meditag.domain.alarm.entity.Alarm;
 import com.example.meditag.domain.calendar.entity.Calendar;
 import com.example.meditag.domain.common.model.BaseTimeEntity;
 import com.example.meditag.domain.medicine.dto.request.MedicineCreateRequestDTO;
+import com.example.meditag.domain.medicine.dto.request.MedicineUpdateRequestDto;
 import com.example.meditag.domain.member.entity.Member;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -46,7 +47,7 @@ public class Medicine extends BaseTimeEntity {
     private String imageUrl;
 
     //처방약 여부
-    private boolean prescribed;
+    private Boolean prescribed;
 
     //회원 연관관계 매핑 (다대일)
     @ManyToOne
@@ -57,16 +58,16 @@ public class Medicine extends BaseTimeEntity {
     @OneToMany(mappedBy = "medicine", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Calendar> calendars = new ArrayList<>();
 
-    public void update(MedicineCreateRequestDTO dto, String imageUrl) {
-        this.name = dto.getName();
-        this.characteristic = dto.getCharacteristic();
-        this.startDate = dto.getStartDate();
-        this.duration = dto.getDuration();
-        this.frequency = dto.getFrequency();
-        this.prescribed = dto.isPrescribed();
+    public void update(MedicineUpdateRequestDto dto, String imageUrl) {
+        if (dto.getName() != null) this.name = dto.getName();
+        if (dto.getCharacteristic() != null) this.characteristic = dto.getCharacteristic();
+        if (dto.getStartDate() != null) this.startDate = dto.getStartDate();
+        if (dto.getDuration() != null) this.duration = dto.getDuration();
+        if (dto.getFrequency() != null) this.frequency = dto.getFrequency();
+        if (dto.getPrescribed() != null) this.prescribed = dto.getPrescribed();
+
         if (imageUrl != null) {
             this.imageUrl = imageUrl;
         }
     }
-
 }

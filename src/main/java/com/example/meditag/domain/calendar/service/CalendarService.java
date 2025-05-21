@@ -56,7 +56,7 @@ public class CalendarService {
 
             CalendarGetDateResponseDTO.calendarDTO medicineDTO = CalendarGetDateResponseDTO.calendarDTO.builder()
                     .medicineName(medicine.getName())
-                    .prescribed(medicine.isPrescribed())
+                    .prescribed(medicine.getPrescribed())
                     .alarms(alarmDTOs)
                     .build();
 

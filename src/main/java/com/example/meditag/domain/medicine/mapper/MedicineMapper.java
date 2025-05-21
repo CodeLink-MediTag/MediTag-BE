@@ -31,7 +31,7 @@ public class MedicineMapper {
                 .duration(medicine.getDuration())
                 .frequency(medicine.getFrequency())
                 .imageUrl(medicine.getImageUrl())
-                .isPrescribed(medicine.isPrescribed())
+                .isPrescribed(medicine.getPrescribed())
                 .build();
     }
 }

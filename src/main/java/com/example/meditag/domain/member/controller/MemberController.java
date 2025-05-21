@@ -3,6 +3,7 @@ package com.example.meditag.domain.member.controller;
 import com.example.meditag.domain.auth.dto.CustomUserDetails;
 import com.example.meditag.domain.member.controller.api.MemberApi;
 import com.example.meditag.domain.member.dto.request.RegisterDTO;
+import com.example.meditag.domain.member.dto.request.UpdateDTO;
 import com.example.meditag.domain.member.service.RegisterService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -30,8 +31,8 @@ public class MemberController implements MemberApi {
 
     // 회원 수정
     @PatchMapping("/me")
-    public ResponseEntity<String> updateMember(@AuthenticationPrincipal CustomUserDetails userDetails, @RequestBody RegisterDTO registerDTO) {
-        registerService.updateMember(userDetails.getUsername(), registerDTO);
+    public ResponseEntity<String> updateMember(@AuthenticationPrincipal CustomUserDetails userDetails, @RequestBody UpdateDTO updateDTO) {
+        registerService.updateMember(userDetails.getUsername(), updateDTO);
         return ResponseEntity.ok("회원 정보가 수정되었습니다.");
     }
 

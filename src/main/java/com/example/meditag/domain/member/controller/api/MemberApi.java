@@ -2,6 +2,7 @@ package com.example.meditag.domain.member.controller.api;
 
 import com.example.meditag.domain.auth.dto.CustomUserDetails;
 import com.example.meditag.domain.member.dto.request.RegisterDTO;
+import com.example.meditag.domain.member.dto.request.UpdateDTO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -43,7 +44,7 @@ public interface MemberApi {
 
     @Operation(summary = "회원 수정", description = "로그인된 회원 정보를 수정합니다.")
     @PutMapping("/me")
-    ResponseEntity<String> updateMember(@AuthenticationPrincipal CustomUserDetails userDetails, RegisterDTO registerDTO);
+    ResponseEntity<String> updateMember(@AuthenticationPrincipal CustomUserDetails userDetails, UpdateDTO updateDTO);
 
     @Operation(summary = "회원 삭제", description = "로그인된 회원을 삭제합니다.")
     @DeleteMapping("/me")

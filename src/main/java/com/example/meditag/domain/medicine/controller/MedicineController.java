@@ -3,6 +3,7 @@ package com.example.meditag.domain.medicine.controller;
 import com.example.meditag.domain.auth.dto.CustomUserDetails;
 import com.example.meditag.domain.medicine.controller.api.MedicineApi;
 import com.example.meditag.domain.medicine.dto.request.MedicineCreateRequestDTO;
+import com.example.meditag.domain.medicine.dto.request.MedicineUpdateRequestDto;
 import com.example.meditag.domain.medicine.dto.response.MedicineGetDateResponseDTO;
 import com.example.meditag.domain.medicine.service.MedicineService;
 import lombok.RequiredArgsConstructor;
@@ -35,9 +36,9 @@ public class MedicineController implements MedicineApi {
     @PatchMapping(value = "/{medicineId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<String> updateMedicine(@AuthenticationPrincipal CustomUserDetails customUserDetails,
                                                  @PathVariable Long medicineId,
-                                                 @RequestPart("data") MedicineCreateRequestDTO requestDto,
+                                                 @RequestPart("data") MedicineUpdateRequestDto updateDto,
                                                  @RequestPart(value = "file", required = false) MultipartFile file) {
-        medicineService.updateMedicine(customUserDetails.getUsername(), medicineId, requestDto, file);
+        medicineService.updateMedicine(customUserDetails.getUsername(), medicineId, updateDto, file);
         return ResponseEntity.ok("약 정보와 알림이 성공적으로 수정되었습니다.");
     }
 

@@ -108,7 +108,7 @@ public class GPTAnswerService {
                 .append("\n특징: ").append(med.getCharacteristic())
                 .append("\n복용 기간: ").append(med.getStartDate()).append(" ~ ")
                 .append(med.getStartDate().plusDays(med.getDuration() - 1))
-                .append("\n처방 여부: ").append(med.isPrescribed() ? "처방약" : "비처방약")
+                .append("\n처방 여부: ").append(med.getPrescribed() ? "처방약" : "비처방약")
                 .append("\n\n"));
 
         promptBuilder.append("복용 알람 정보:\n");

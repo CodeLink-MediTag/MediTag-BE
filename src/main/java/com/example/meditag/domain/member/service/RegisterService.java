@@ -1,6 +1,7 @@
 package com.example.meditag.domain.member.service;
 
 import com.example.meditag.domain.member.dto.request.RegisterDTO;
+import com.example.meditag.domain.member.dto.request.UpdateDTO;
 import com.example.meditag.domain.member.entity.Member;
 import com.example.meditag.domain.member.mapper.MemberMapper;
 import com.example.meditag.domain.member.repository.MemberRepository;
@@ -51,19 +52,13 @@ public class RegisterService {
 
     // 회원 수정 API
     @Transactional
-    public void updateMember(String username, RegisterDTO dto) {
+    public void updateMember(String username, UpdateDTO dto) {
         Member member = memberRepository.findByUsername(username)
                 .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_NOT_FOUND));
 
-        String encodedPassword = dto.getPassword() != null ? bCryptPasswordEncoder.encode(dto.getPassword()) : null;
-
         member.update(
-                dto.getUsername(),
                 dto.getName(),
-                dto.getPhone(),
-                encodedPassword,
-                "ROLE_USER",  // 또는 dto.getRole() 로 유동적 처리 가능
-                dto.getFirebasetoken()
+                dto.getPhone()
         );
 
         memberRepository.save(member);
