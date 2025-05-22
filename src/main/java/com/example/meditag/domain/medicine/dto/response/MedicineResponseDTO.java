@@ -25,14 +25,14 @@ public class MedicineResponseDTO {
     private LocalDate startDate;
 
     //복용 기간
-    private int duration;
+    private Integer duration;
 
     //복용 횟수(일반약 일때)
-    private int frequency;
+    private Integer frequency;
 
     //사진
     private String imageUrl;
 
     //처방약 여부
-    private boolean isPrescribed;
+    private Boolean prescribed;
 }

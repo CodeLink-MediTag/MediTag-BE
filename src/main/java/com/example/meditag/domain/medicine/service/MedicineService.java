@@ -55,7 +55,7 @@ public class MedicineService {
                 .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_NOT_FOUND));
 
         // 처방약인 경우
-        if (requestDto.isPrescribed()) {
+        if (requestDto.getPrescribed()) {
             if (requestDto.getDosageTimes() == null || requestDto.getDosageTimes().isEmpty()) {
                 throw new CustomException(ErrorCode.INVALID_INPUT_VALUE);
             }
@@ -102,7 +102,7 @@ public class MedicineService {
         List<Alarm> alarmList = new ArrayList<>();
 
         for (Calendar calendar : calendarList) {
-            if (requestDto.isPrescribed()) {
+            if (requestDto.getPrescribed()) {
                 // 🔥 사용자가 입력한 복용 시간 (`dosageTimes`) 기반으로 생성!
                 List<String> dosageTimes = requestDto.getDosageTimes(); // 예: ["점심", "저녁"]
                 List<String> alarmTimes = requestDto.getAlarmTimes(); // 예: ["13:00", "20:00"]
@@ -206,6 +206,7 @@ public class MedicineService {
                     .medicineName(medicine.getName())
                     .characteristic(medicine.getCharacteristic())
                     .imageUrl(medicine.getImageUrl())
+                    .prescribed(medicine.getPrescribed())
                     .alarms(alarmDTOs)
                     .build();
 

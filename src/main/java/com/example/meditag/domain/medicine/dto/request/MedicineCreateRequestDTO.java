@@ -25,13 +25,13 @@ public class MedicineCreateRequestDTO {
     private LocalDate startDate;
 
     // 복용 기간
-    private int duration;
+    private Integer duration;
 
     // 복용 횟수(일반약 일때)
-    private int frequency;
+    private Integer frequency;
 
     // 처방약 여부
-    private boolean prescribed;
+    private Boolean prescribed;
 
     // 처방약일 경우(isPrescribed=true): 아침, 점심, 저녁 등 복용 시간대 선택 (예: ["아침", "저녁"])
     private List<String> dosageTimes;

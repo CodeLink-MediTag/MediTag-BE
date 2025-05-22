@@ -16,7 +16,7 @@ public class MedicineMapper {
                 .duration(medicineCreateRequestDTO.getDuration())
                 .frequency(medicineCreateRequestDTO.getFrequency())
                 .imageUrl(imageUrl)
-                .prescribed(medicineCreateRequestDTO.isPrescribed())
+                .prescribed(medicineCreateRequestDTO.getPrescribed())
                 .member(member)
                 .build();
     }
@@ -31,7 +31,7 @@ public class MedicineMapper {
                 .duration(medicine.getDuration())
                 .frequency(medicine.getFrequency())
                 .imageUrl(medicine.getImageUrl())
-                .isPrescribed(medicine.getPrescribed())
+                .prescribed(medicine.getPrescribed())
                 .build();
     }
 }
