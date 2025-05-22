@@ -203,6 +203,7 @@ public class MedicineService {
                     .collect(Collectors.toList());
 
             MedicineGetDateResponseDTO.MedicineDTO medicineDTO = MedicineGetDateResponseDTO.MedicineDTO.builder()
+                    .medicineId(medicine.getId())
                     .medicineName(medicine.getName())
                     .characteristic(medicine.getCharacteristic())
                     .imageUrl(medicine.getImageUrl())

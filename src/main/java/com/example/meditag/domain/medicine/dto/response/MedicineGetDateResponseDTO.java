@@ -22,6 +22,7 @@ public class MedicineGetDateResponseDTO {
     @NoArgsConstructor
     @Builder
     public static class MedicineDTO {
+        private Long medicineId;
         private String medicineName;  // 약 이름
         private String characteristic;  // 약 특징
         private String imageUrl;  // 약 이미지 URL
