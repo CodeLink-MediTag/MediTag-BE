@@ -208,6 +208,8 @@ public class MedicineService {
                     .characteristic(medicine.getCharacteristic())
                     .imageUrl(medicine.getImageUrl())
                     .prescribed(medicine.getPrescribed())
+                    .duration(medicine.getDuration())
+                    .frequency(medicine.getFrequency())
                     .alarms(alarmDTOs)
                     .build();
 
