@@ -36,7 +36,7 @@ public enum ErrorCode {
 
     CHAT_SESSION_NOT_FOUND(HttpStatus.BAD_REQUEST, "세션을 찾을 수 없습니다."),
 
-
+    FAVORITE_NOT_FOUND(HttpStatus.NOT_FOUND, "즐겨찾기를 찾을 수 없습니다."),
     GUARDIAN_NOT_FOUND(HttpStatus.BAD_REQUEST, "보호자를 찾을 수 없습니다.");
     //보호자 관련
     //GUARDIAN_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 보호자입니다.");
