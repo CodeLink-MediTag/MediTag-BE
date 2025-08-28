@@ -1,150 +1,150 @@
-package com.example.meditag.domain.auth.filter;
+    package com.example.meditag.domain.auth.filter;
 
-import com.example.meditag.domain.auth.dto.CustomUserDetails;
-import com.example.meditag.domain.auth.dto.LoginDTO;
-import com.example.meditag.domain.jwt.repository.RefreshTokenRedisRepository;
-import com.example.meditag.global.error.ErrorResponse;
-import com.example.meditag.global.error.exception.ErrorCode;
-import com.example.meditag.domain.jwt.util.JWTUtil;
-import com.example.meditag.domain.jwt.dto.TokenDTO;
-import com.example.meditag.global.error.exception.CustomAuthenticationException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.http.Cookie;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.AuthenticationServiceException;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.AuthenticationException;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+    import com.example.meditag.domain.auth.dto.CustomUserDetails;
+    import com.example.meditag.domain.auth.dto.LoginDTO;
+    import com.example.meditag.domain.jwt.repository.RefreshTokenRedisRepository;
+    import com.example.meditag.global.error.ErrorResponse;
+    import com.example.meditag.global.error.exception.ErrorCode;
+    import com.example.meditag.domain.jwt.util.JWTUtil;
+    import com.example.meditag.domain.jwt.dto.TokenDTO;
+    import com.example.meditag.global.error.exception.CustomAuthenticationException;
+    import com.fasterxml.jackson.databind.ObjectMapper;
+    import jakarta.servlet.FilterChain;
+    import jakarta.servlet.http.Cookie;
+    import jakarta.servlet.http.HttpServletRequest;
+    import jakarta.servlet.http.HttpServletResponse;
+    import lombok.extern.slf4j.Slf4j;
+    import org.springframework.http.HttpStatus;
+    import org.springframework.security.authentication.AuthenticationManager;
+    import org.springframework.security.authentication.AuthenticationServiceException;
+    import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+    import org.springframework.security.core.Authentication;
+    import org.springframework.security.core.AuthenticationException;
+    import org.springframework.security.core.GrantedAuthority;
+    import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
-import java.io.IOException;
-import java.util.Collection;
-import java.util.Iterator;
+    import java.io.IOException;
+    import java.util.Collection;
+    import java.util.Iterator;
 
-@Slf4j
-public class LoginFilter extends UsernamePasswordAuthenticationFilter { // 로그인 시 동작하는 필터
+    @Slf4j
+    public class LoginFilter extends UsernamePasswordAuthenticationFilter { // 로그인 시 동작하는 필터
 
-    private final AuthenticationManager authenticationManager; // 인증을 담당하는 매니저
-    private final JWTUtil jwtUtil; // JWT 유틸리티 클래스
-    private final RefreshTokenRedisRepository refreshTokenRedisRepository;
+        private final AuthenticationManager authenticationManager; // 인증을 담당하는 매니저
+        private final JWTUtil jwtUtil; // JWT 유틸리티 클래스
+        private final RefreshTokenRedisRepository refreshTokenRedisRepository;
 
-    public LoginFilter(AuthenticationManager authenticationManager, JWTUtil jwtUtil, RefreshTokenRedisRepository refreshTokenRedisRepository) {
-        this.authenticationManager = authenticationManager;
-        this.jwtUtil = jwtUtil;
-        this.refreshTokenRedisRepository = refreshTokenRedisRepository;
-        setFilterProcessesUrl("/api/auth/login");
-        log.info("[LoginFilter] LoginFilter 생성자 주입");
-    }
+        public LoginFilter(AuthenticationManager authenticationManager, JWTUtil jwtUtil, RefreshTokenRedisRepository refreshTokenRedisRepository) {
+            this.authenticationManager = authenticationManager;
+            this.jwtUtil = jwtUtil;
+            this.refreshTokenRedisRepository = refreshTokenRedisRepository;
+            setFilterProcessesUrl("/api/auth/login");
+            log.info("[LoginFilter] LoginFilter 생성자 주입");
+        }
 
-    @Override
-    public Authentication attemptAuthentication(HttpServletRequest request, HttpServletResponse response) throws AuthenticationException {
-        try {
-            // JSON 요청을 LoginDTO 객체로 변환
-            LoginDTO loginDTO = new ObjectMapper().readValue(request.getInputStream(), LoginDTO.class);
+        @Override
+        public Authentication attemptAuthentication(HttpServletRequest request, HttpServletResponse response) throws AuthenticationException {
+            try {
+                // JSON 요청을 LoginDTO 객체로 변환
+                LoginDTO loginDTO = new ObjectMapper().readValue(request.getInputStream(), LoginDTO.class);
 
-            log.info("[LoginFilter/attemptAuthentication] 1. loginDTO로 객체 변환 email:{}, password:{}", loginDTO.getUsername(), loginDTO.getPassword());
+                log.info("[LoginFilter/attemptAuthentication] 1. loginDTO로 객체 변환 email:{}, password:{}", loginDTO.getUsername(), loginDTO.getPassword());
 
-            if (loginDTO.getUsername() == null || loginDTO.getUsername().isBlank() ||
-                    loginDTO.getPassword() == null || loginDTO.getPassword().isBlank()) {
-                throw new CustomAuthenticationException(ErrorCode.USERNAME_OR_PASSWORD_MISSING);
+                if (loginDTO.getUsername() == null || loginDTO.getUsername().isBlank() ||
+                        loginDTO.getPassword() == null || loginDTO.getPassword().isBlank()) {
+                    throw new CustomAuthenticationException(ErrorCode.USERNAME_OR_PASSWORD_MISSING);
+                }
+
+                UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+                        loginDTO.getUsername(),
+                        loginDTO.getPassword()
+                );
+
+                log.info("[LoginFilter/attemptAuthentication] 2. UsernamePasswordAuthenticationToken 생성 authToken: {}", authToken);
+
+                return authenticationManager.authenticate(authToken);
+
+            } catch (CustomAuthenticationException e) {
+                throw e;
+            } catch (IOException e) {
+                throw new AuthenticationServiceException("로그인 입력을 읽는 도중 오류 발생: " + e.getMessage());
+            }
+        }
+
+        // 로그인 성공 시 실행되는 메서드 (JWT 발급)
+        @Override
+        protected void successfulAuthentication(HttpServletRequest request, HttpServletResponse response, FilterChain chain, Authentication authentication) throws IOException {
+            // 인증된 사용자 정보 가져오기
+            CustomUserDetails customUserDetails = (CustomUserDetails) authentication.getPrincipal();
+            String username = customUserDetails.getUsername();
+
+            log.info("[LoginFilter/successfulAuthentication] 3. 인증된 사용자 정보 가져오기: {}", username);
+
+            // 사용자 권한 가져오기
+            Collection<? extends GrantedAuthority> authorities = authentication.getAuthorities();
+            Iterator<? extends GrantedAuthority> iterator = authorities.iterator();
+            GrantedAuthority auth = iterator.next();
+            String role = auth.getAuthority(); // 역할(role) 가져오기
+
+            log.info("[LoginFilter/successfulAuthentication] 4. 인증된 사용자 권한 가져오기: {}", role);
+
+            // JWT 토큰 생성
+            String access = jwtUtil.createAccessToken(username, role, 60 * 60 * 1000L);
+            String refresh = jwtUtil.createRefreshToken(username, 60 * 60 * 60 * 1000L);
+
+            log.info("[LoginFilter/successfulAuthentication] 5. JWT 토큰 생성 - Access: {}, Refresh: {}", access, refresh);
+
+            // RefreshToken 저장 (Redis)
+            refreshTokenRedisRepository.saveRefreshToken(username, refresh);
+
+            // TokenDTO 생성 및 JSON 응답
+            TokenDTO tokenDTO = TokenDTO.builder()
+                    .accessToken(access)
+                    .refreshToken(refresh)
+                    .build();
+
+            log.info("[LoginFilter/successfulAuthentication] 6. JWT TokenDTO 생성: {}", tokenDTO);
+
+            response.setContentType("application/json");
+            response.setCharacterEncoding("UTF-8");
+            response.setStatus(HttpStatus.OK.value());
+            response.addHeader("Authorization", "Bearer " + access);
+
+            // 리프레시 토큰을 쿠키에 추가
+            Cookie refreshTokenCookie = createCookie("refresh", refresh);
+
+            // JSON 응답 반환
+            new ObjectMapper().writeValue(response.getWriter(), tokenDTO);
+          response.addCookie(refreshTokenCookie);
+
+            log.info("[LoginFilter/successfulAuthentication] 7. JWT 토큰 HTTP 헤더 및 쿠키 설정 완료");
+        }
+
+        @Override
+        protected void unsuccessfulAuthentication(HttpServletRequest request, HttpServletResponse response, AuthenticationException failed) throws IOException {
+            log.error("[LoginFilter] 로그인 실패: {}", failed.getMessage());
+
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.setContentType("application/json");
+            response.setCharacterEncoding("UTF-8");
+
+            ErrorCode errorCode;
+
+            if (failed instanceof CustomAuthenticationException ex) {
+                errorCode = ex.getErrorCode();
+            } else {
+                errorCode = ErrorCode.INVALID_CREDENTIALS;
             }
 
-            UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                    loginDTO.getUsername(),
-                    loginDTO.getPassword()
-            );
-
-            log.info("[LoginFilter/attemptAuthentication] 2. UsernamePasswordAuthenticationToken 생성 authToken: {}", authToken);
-
-            return authenticationManager.authenticate(authToken);
-
-        } catch (CustomAuthenticationException e) {
-            throw e;
-        } catch (IOException e) {
-            throw new AuthenticationServiceException("로그인 입력을 읽는 도중 오류 발생: " + e.getMessage());
-        }
-    }
-
-    // 로그인 성공 시 실행되는 메서드 (JWT 발급)
-    @Override
-    protected void successfulAuthentication(HttpServletRequest request, HttpServletResponse response, FilterChain chain, Authentication authentication) throws IOException {
-        // 인증된 사용자 정보 가져오기
-        CustomUserDetails customUserDetails = (CustomUserDetails) authentication.getPrincipal();
-        String username = customUserDetails.getUsername();
-
-        log.info("[LoginFilter/successfulAuthentication] 3. 인증된 사용자 정보 가져오기: {}", username);
-
-        // 사용자 권한 가져오기
-        Collection<? extends GrantedAuthority> authorities = authentication.getAuthorities();
-        Iterator<? extends GrantedAuthority> iterator = authorities.iterator();
-        GrantedAuthority auth = iterator.next();
-        String role = auth.getAuthority(); // 역할(role) 가져오기
-
-        log.info("[LoginFilter/successfulAuthentication] 4. 인증된 사용자 권한 가져오기: {}", role);
-
-        // JWT 토큰 생성
-        String access = jwtUtil.createAccessToken(username, role, 60 * 60 * 1000L);
-        String refresh = jwtUtil.createRefreshToken(username, 60 * 60 * 60 * 1000L);
-
-        log.info("[LoginFilter/successfulAuthentication] 5. JWT 토큰 생성 - Access: {}, Refresh: {}", access, refresh);
-
-        // RefreshToken 저장 (Redis)
-        refreshTokenRedisRepository.saveRefreshToken(username, refresh);
-
-        // TokenDTO 생성 및 JSON 응답
-        TokenDTO tokenDTO = TokenDTO.builder()
-                .accessToken(access)
-                .refreshToken(refresh)
-                .build();
-
-        log.info("[LoginFilter/successfulAuthentication] 6. JWT TokenDTO 생성: {}", tokenDTO);
-
-        response.setContentType("application/json");
-        response.setCharacterEncoding("UTF-8");
-        response.setStatus(HttpStatus.OK.value());
-        response.addHeader("Authorization", "Bearer " + access);
-
-        // 리프레시 토큰을 쿠키에 추가
-        Cookie refreshTokenCookie = createCookie("refresh", refresh);
-
-        // JSON 응답 반환
-        new ObjectMapper().writeValue(response.getWriter(), tokenDTO);
-      response.addCookie(refreshTokenCookie);
-
-        log.info("[LoginFilter/successfulAuthentication] 7. JWT 토큰 HTTP 헤더 및 쿠키 설정 완료");
-    }
-
-    @Override
-    protected void unsuccessfulAuthentication(HttpServletRequest request, HttpServletResponse response, AuthenticationException failed) throws IOException {
-        log.error("[LoginFilter] 로그인 실패: {}", failed.getMessage());
-
-        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-        response.setContentType("application/json");
-        response.setCharacterEncoding("UTF-8");
-
-        ErrorCode errorCode;
-
-        if (failed instanceof CustomAuthenticationException ex) {
-            errorCode = ex.getErrorCode();
-        } else {
-            errorCode = ErrorCode.INVALID_CREDENTIALS;
+            ErrorResponse errorResponse = new ErrorResponse(errorCode.getStatus().value(), errorCode.getMessage());
+            new ObjectMapper().writeValue(response.getWriter(), errorResponse);
         }
 
-        ErrorResponse errorResponse = new ErrorResponse(errorCode.getStatus().value(), errorCode.getMessage());
-        new ObjectMapper().writeValue(response.getWriter(), errorResponse);
+        private Cookie createCookie(String key, String value) {
+            Cookie cookie = new Cookie(key, value);
+            cookie.setMaxAge(24 * 60 * 60);
+            cookie.setPath("/");
+            cookie.setHttpOnly(true);
+            return cookie;
+        }
     }
-
-    private Cookie createCookie(String key, String value) {
-        Cookie cookie = new Cookie(key, value);
-        cookie.setMaxAge(24 * 60 * 60);
-        cookie.setPath("/");
-        cookie.setHttpOnly(true);
-        return cookie;
-    }
-}
