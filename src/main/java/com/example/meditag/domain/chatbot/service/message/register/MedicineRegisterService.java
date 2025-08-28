@@ -19,9 +19,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.temporal.TemporalAdjusters;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -78,7 +76,7 @@ public class MedicineRegisterService {
                     int duration = extractDaysFromText(message);
                     session.setDuration(duration);
                     session.setCurrentStep(MedicineRegisterSession.Step.FREQUENCY);
-                    yield "하루 복용 횟수는 몇 회인가요?";
+                    yield "하루 복용 횟수는 몇 회인가요? (1~3회 권장)";
                 }
                 case FREQUENCY -> {
                     int frequency = extractFrequencyFromText(message);
@@ -100,9 +98,11 @@ public class MedicineRegisterService {
                     }
 
                     session.setCurrentStep(MedicineRegisterSession.Step.ALARM_DOSAGE_TIME);
-                    yield isPrescribed
-                            ? "처방약이네요! 아침, 점심, 저녁 시간대를 각각 입력해주세요! 시간 앞에 오전, 오후를 말해주세요"
-                            : "복용할 시간들을 입력해주세요! 시간 앞에 오전, 오후를 말해주세요";
+                    if (isPrescribed) {
+                        yield buildPrescriptionTimeQuestion(session.getFrequency());
+                    } else {
+                        yield "복용할 시간들을 입력해주세요! 예를 들어 오전 8시, 오후 6시 (시간 앞에 오전/오후를 붙여주세요)";
+                    }
                 }
                 case ALARM_DOSAGE_TIME -> {
                     if (session.getFrequency() == null) {
@@ -110,12 +110,42 @@ public class MedicineRegisterService {
                         yield "복용 횟수 정보가 누락되었습니다. 약 등록을 다시 시작해주세요.";
                     }
 
-                    List<String> times = extractTimesFromText(message);
-                    if (times.size() != session.getFrequency()) {
-                        yield "복용 횟수에 맞게 정확히 " + session.getFrequency() + "개의 시간을 입력해주세요!";
+                    final List<String> dosageLabels = new ArrayList<>();
+                    final List<LocalTime> times = new ArrayList<>();
+
+                    if (session.isPrescribed()) {
+                        // ✅ 처방약: 아침/점심/저녁 중 선택값 → 고정 시각 자동 매핑
+                        List<String> meals = parseMealSelections(message);
+                        if (meals.size() != session.getFrequency()) {
+                            yield "복용 횟수(" + session.getFrequency() + "회)와 동일한 개수로 "
+                                    + "아침/점심/저녁 중에서 선택해 주세요.";
+                        }
+
+                        for (String meal : meals) {
+                            LocalTime t = mapMealToTime(meal);
+                            if (t == null) {
+                                yield "아침/점심/저녁만 선택할 수 있어요.'";
+                            }
+                            dosageLabels.add(meal); // 라벨은 선택된 값 그대로
+                            times.add(t);           // 시각은 고정값 (아침 08:00 / 점심 12:00 / 저녁 18:00)
+                        }
+                    } else {
+                        // ✅ 일반약: 사용자가 입력한 시각 그대로 등록
+                        List<String> parsed = extractTimesFromText(message);
+                        if (parsed.size() != session.getFrequency()) {
+                            yield "복용 횟수에 맞게 정확히 " + session.getFrequency() + "개의 시간을 입력해주세요!";
+                        }
+                        for (String timeStr : parsed) {
+                            String[] parts = timeStr.split(":");
+                            LocalTime localTime = LocalTime.of(Integer.parseInt(parts[0]), Integer.parseInt(parts[1]));
+                            times.add(localTime);
+                            dosageLabels.add(getDosageLabel(localTime)); // 라벨은 시간대로 자동 구분
+                        }
                     }
 
-                    session.setDosageTimes(times.toArray(new String[0]));
+                    session.setDosageTimes(times.stream()
+                            .map(t -> String.format("%02d:%02d", t.getHour(), t.getMinute()))
+                            .toArray(String[]::new));
                     session.setCurrentStep(MedicineRegisterSession.Step.COMPLETE);
 
                     Member member = memberRepository.findByUsername(username)
@@ -134,6 +164,7 @@ public class MedicineRegisterService {
 
                     medicineRepository.save(medicine);
 
+                    // 기간 동안의 캘린더 + 알람 생성
                     for (int day = 0; day < session.getDuration(); day++) {
                         LocalDate currentDay = session.getStartDate().plusDays(day);
                         Calendar calendar = Calendar.builder()
@@ -142,13 +173,16 @@ public class MedicineRegisterService {
                                 .alarms(new ArrayList<>())
                                 .build();
 
-                        for (String timeStr : times) {
-                            String[] parts = timeStr.split(":");
-                            LocalTime localTime = LocalTime.of(Integer.parseInt(parts[0]), Integer.parseInt(parts[1]));
+                        for (int i = 0; i < times.size(); i++) {
+                            LocalTime localTime = times.get(i);
                             LocalDateTime alarmDateTime = LocalDateTime.of(currentDay, localTime);
 
+                            String label = session.isPrescribed()
+                                    ? dosageLabels.get(i)         // 처방약: 선택 라벨 그대로
+                                    : getDosageLabel(localTime);  // 일반약: 시간대 자동 라벨
+
                             Alarm alarm = Alarm.builder()
-                                    .dosageTime(session.isPrescribed() ? getDosageLabel(localTime) : "일반")
+                                    .dosageTime(label)
                                     .alarmTime(alarmDateTime)
                                     .taking(false)
                                     .calendar(calendar)
@@ -169,10 +203,13 @@ public class MedicineRegisterService {
                 }
             };
         } catch (Exception e) {
+            log.error("약 등록 처리 중 오류", e);
             sessionStorage.clearSession(username);
             return "입력 도중 오류가 발생했어요. 다시 시도해주세요.";
         }
     }
+
+    // ===================== 날짜/횟수/시간 파싱 =====================
 
     private LocalDate parseNaturalDate(String message) {
         message = message.replaceAll("\\s+", ""); // 공백 제거
@@ -236,7 +273,7 @@ public class MedicineRegisterService {
                 int parsedYear = Integer.parseInt(matcher.group(1));
                 year = parsedYear < 100 ? 2000 + parsedYear : parsedYear;
             } else {
-                year = today.getYear();
+                year = LocalDate.now().getYear();
             }
 
             int month = Integer.parseInt(matcher.group(2));
@@ -247,21 +284,21 @@ public class MedicineRegisterService {
         throw new IllegalArgumentException("날짜 형식을 인식할 수 없습니다.");
     }
 
-
     private int extractDaysFromText(String message) {
         message = message.replaceAll("[\\s]", "");
         if (message.contains("일주일") || message.contains("한주") || message.contains("1주") || message.contains("1주일")) return 7;
-        if (message.contains("이주일") || message.contains("2주") || message.contains("이 주") || message.contains("2주일")) return 14;
-        if (message.contains("삼일") || message.contains("3일") || message.contains("삼 일")) return 3;
-        if (message.contains("사일") || message.contains("4일") || message.contains("사 일")) return 4;
-        if (message.contains("오일") || message.contains("5일") || message.contains("오 일")) return 5;
+        if (message.contains("이주일") || message.contains("2주") || message.contains("이주") || message.contains("2주일")) return 14;
+        if (message.contains("삼일") || message.contains("3일")) return 3;
+        if (message.contains("사일") || message.contains("4일")) return 4;
+        if (message.contains("오일") || message.contains("5일")) return 5;
         if (message.contains("십오일") || message.contains("보름") || message.contains("15일")) return 15;
-        if (message.contains("한 달") || message.contains("30일") || message.contains("삼십일")) return 30;
-        Matcher m = Pattern.compile("(\\d+)[일일간]").matcher(message);
+        if (message.contains("한달") || message.contains("한 달") || message.contains("30일") || message.contains("삼십일")) return 30;
+
+        // ✅ 버그 수정: 문자클래스가 아닌 정상적인 그룹 매칭으로 교체
+        Matcher m = Pattern.compile("(\\d+)\\s*(일|일간)").matcher(message);
         if (m.find()) return Integer.parseInt(m.group(1));
         return 1;
     }
-
 
     private int extractFrequencyFromText(String message) {
         message = message.replaceAll("[\\s]", "");
@@ -269,7 +306,9 @@ public class MedicineRegisterService {
         if (message.contains("두번") || message.contains("2회")) return 2;
         if (message.contains("세번") || message.contains("3회")) return 3;
         if (message.contains("네번") || message.contains("4회")) return 4;
-        Matcher m = Pattern.compile("(\\d+)[번회]").matcher(message);
+
+        // ✅ 버그 수정: 문자클래스가 아닌 정상적인 그룹 매칭으로 교체
+        Matcher m = Pattern.compile("(\\d+)\\s*(번|회)").matcher(message);
         if (m.find()) return Integer.parseInt(m.group(1));
         return 1;
     }
@@ -309,6 +348,44 @@ public class MedicineRegisterService {
 
         return result;
     }
+
+    // ===================== 처방약 전용: 식사 선택/고정 시각 매핑 =====================
+
+    /** 처방약 질문 문구 */
+    private String buildPrescriptionTimeQuestion(int timesPerDay) {
+        String base = """
+                처방약은 고정 시간으로 복용 알림을 설정해요.
+                아침(오전 8:00), 점심(오후 12:00), 저녁(오후 6:00) 중에서 복용 횟수에 맞게 선택해 주세요.
+                예) 1회: 아침 / 2회: 아침 저녁 / 3회: 아침 점심 저녁
+                """;
+        return base + "현재 입력된 1일 복용 횟수: " + timesPerDay + "회";
+    }
+
+    /** '아침/점심/저녁' 선택 파싱 (중복 제거, 입력 순서 유지) */
+    private List<String> parseMealSelections(String message) {
+        // 구분자: 공백, 콤마, '와', '그리고', '+', '/'
+        String normalized = message.replaceAll("[,\\+/]|그리고|및|와|과", " ");
+        String[] tokens = normalized.trim().split("\\s+");
+
+        Set<String> allow = new HashSet<>(Arrays.asList("아침", "점심", "저녁"));
+        LinkedHashSet<String> ordered = new LinkedHashSet<>();
+        for (String t : tokens) {
+            if (allow.contains(t)) ordered.add(t);
+        }
+        return new ArrayList<>(ordered);
+    }
+
+    /** 식사 라벨 → 고정 시각 매핑 */
+    private LocalTime mapMealToTime(String meal) {
+        switch (meal) {
+            case "아침": return LocalTime.of(8, 0);
+            case "점심": return LocalTime.NOON; // 12:00
+            case "저녁": return LocalTime.of(18, 0);
+            default: return null;
+        }
+    }
+
+    // ===================== 공통 유틸 =====================
 
     private String getDosageLabel(LocalTime time) {
         if (time.isBefore(LocalTime.NOON)) return "아침";

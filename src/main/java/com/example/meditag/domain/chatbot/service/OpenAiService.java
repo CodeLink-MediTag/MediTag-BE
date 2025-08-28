@@ -18,25 +18,40 @@ public class OpenAiService {
 
     public String sendMessageToOpenAi(String prompt) {
         try {
-            String response = webClient.post() // POST 요청 생성
-                    .uri("/chat/completions") // 요청 URI
-                    .bodyValue(Map.of( // 요청 본문 설정
+            String systemPrompt = """
+            당신은 사용자의 질문에 신뢰할 수 있는 정보를 바탕으로만 답변하는 AI입니다.
+            다음 규칙을 반드시 따르세요:
+            1) 충분한 근거가 없거나 정보가 불확실한 경우, 절대 임의로 지어내지 말고 "알 수 없습니다" 또는 "잘 모르겠습니다"라고 명시하세요.
+            2) 답변 전 단계별로 정보를 검증하고, 모호하거나 출처가 불분명한 경우 "확실하지 않음"으로 표시하세요.
+            3) 확실한 정보만으로 간결한 답변을 생성하세요. 추측이 필요한 경우 "추측입니다"라고 반드시 밝혀주세요.
+            4) 질문이 모호하거나 정보가 부족하면 먼저 세부 정보를 요청하세요.
+            5) 확인되지 않은 사실은 단정적으로 말하지 말고, 근거가 있다면 함께 제시하세요.
+            6) 출처가 있다면 간단히 요약하여 포함하세요.
+            """;
+
+            String response = webClient.post()
+                    .uri("/chat/completions")
+                    .bodyValue(Map.of(
                             "model", "gpt-3.5-turbo",
-                            "messages", List.of(Map.of("role", "user", "content", prompt)),
+                            "messages", List.of(
+                                    Map.of("role", "system", "content", systemPrompt),
+                                    Map.of("role", "user", "content", prompt)
+                            ),
                             "max_tokens", 500,
                             "temperature", 0.7
                     ))
-                    .retrieve() // 응답 받기
+                    .retrieve()
                     .bodyToMono(String.class)
-                    .block(); // 동기 방식으로 결과 대기
+                    .block();
 
-            OpenAiResponseDTO openAiResponse = objectMapper.readValue(response, OpenAiResponseDTO.class); // JSON 파싱
-            return openAiResponse.getChoices().get(0).getMessage().getContent().trim(); // 응답 텍스트 반환
+            OpenAiResponseDTO openAiResponse = objectMapper.readValue(response, OpenAiResponseDTO.class);
+            return openAiResponse.getChoices().get(0).getMessage().getContent().trim();
 
         } catch (Exception e) {
-            e.printStackTrace(); // 에러 출력
-            throw new RuntimeException("OpenAI 응답 파싱 중 오류 발생", e); // 예외 던짐
+            e.printStackTrace();
+            throw new RuntimeException("OpenAI 응답 파싱 중 오류 발생", e);
         }
     }
+
 }
 
