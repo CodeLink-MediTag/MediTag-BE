@@ -23,10 +23,16 @@ public class DosageToggleService {
     private final OpenAiService openAiService;
     private final AlarmRepository alarmRepository;
 
-    // ⚠️ 토글을 강하게 시사하는 키워드만 남기고, 모호한 건 상위 라우팅에서 처리
+    // ⚠️ “약 먹었어/복용했어/복용완료 …” 류는 이제 여기서 걸러서 false 반환
     public boolean isApplicable(String message) {
         String m = normalize(message);
-        return m.matches(".*(복용했|먹었어|먹음|복용완료|기록해줘|처리해줘|체크해줘).*");
+        // 항상-양자택일 트리거에 해당하면 토글 적용 불가
+        if (m.matches(".*약.*(먹었어|먹음|복용했어|복용함|복용했습니다|복용완료|먹었어요|복용했어요).*")) {
+            return false;
+        }
+        // 명시적 지시 또는 시간대+행위 조합일 때만 토글 허용
+        if (m.matches(".*(기록해줘|처리해줘|체크해줘|표시해줘).*")) return true;
+        return m.matches(".*(아침|점심|저녁|자정|취침|[0-2]?\\d시).*(완료|기록|처리|체크|변경|표시).*");
     }
 
     // ====== 규칙 기반 1차 추출: 빠르고 안정적 ======
@@ -76,8 +82,7 @@ public class DosageToggleService {
         // 5) 토글 수행 (트랜잭션 내)
         for (Alarm alarm : alarms) {
             alarm.toggleTaking();
-            // save() 불필요할 수 있으나, Repository 구현에 따라 유지
-            // alarmRepository.save(alarm);
+            // alarmRepository.save(alarm); // 구현에 따라 필요 시 유지
         }
 
         return String.format("오늘 %s %s 약의 복용 상태를 변경했어요! 잘하셨어요!",
@@ -87,7 +92,6 @@ public class DosageToggleService {
     private Optional<String> extractSlotByRule(String compact) {
         Matcher m = SLOT_PAT.matcher(compact);
         if (m.find()) return Optional.of(m.group(1));
-        // “지금” + 현재 시각 근접 슬롯 추정 로직을 넣고 싶다면 여기에서 처리 가능
         return Optional.empty();
     }
 

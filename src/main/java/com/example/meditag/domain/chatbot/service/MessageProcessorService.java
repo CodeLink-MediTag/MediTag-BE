@@ -4,7 +4,10 @@ import com.example.meditag.domain.chatbot.entity.ChatSession;
 import com.example.meditag.domain.chatbot.entity.Message;
 import com.example.meditag.domain.chatbot.repository.ChatSessionRepository;
 import com.example.meditag.domain.chatbot.repository.MessageRepository;
-import com.example.meditag.domain.chatbot.service.message.*;
+import com.example.meditag.domain.chatbot.service.message.DateMedicineInquiryService;
+import com.example.meditag.domain.chatbot.service.message.DosageToggleService;
+import com.example.meditag.domain.chatbot.service.message.GPTAnswerService;
+import com.example.meditag.domain.chatbot.service.message.RecordingPlayService;
 import com.example.meditag.domain.chatbot.service.message.register.MedicineRegisterService;
 import com.example.meditag.global.error.exception.CustomException;
 import com.example.meditag.global.error.exception.ErrorCode;
@@ -68,9 +71,11 @@ public class MessageProcessorService {
                         saveBotMessage(session, result);
                         return result;
                     } catch (Exception e) {
-                        String fallback = gptAnswerService.execute(username, chatSessionId,
-                                "사용자가 복용 현황을 보려는 것 같지만 날짜를 확정하지 못했어. 오늘 복용 현황을 안내해줘.");
-                        awaitingDisambiguation.remove(username);
+                        String fallback = gptAnswerService.execute(
+                                username,
+                                chatSessionId,
+                                "사용자가 복용 현황을 보려는 것 같지만 날짜를 확정하지 못했어. 오늘 복용 현황을 먼저 보여주고, 필요하면 다른 날짜도 물어봐줘."
+                        );
                         saveBotMessage(session, fallback);
                         return fallback;
                     }
@@ -82,25 +87,34 @@ public class MessageProcessorService {
                 }
             }
 
-            // 2) 최종 어절/표현 단서로 '조회(질문)' 의도 우선 감지
+            // 2) **항상-분기 유도**: “약 … 먹었어/복용했어/복용완료 …” 류면 무조건 양자택일 질문
+            if (triggersAlwaysDisambiguation(message)) {
+                String ask = disambiguationPrompt();
+                awaitingDisambiguation.put(username, true);
+                saveBotMessage(session, ask);
+                return ask;
+            }
+
+            // 3) 최종 어절/표현 단서로 '조회(질문)' 의도 우선 감지
             if (isInquiryByKeywords(message)) {
                 try {
                     String result = dateMedicineInquiryService.execute(username, message);
                     saveBotMessage(session, result);
                     return result;
                 } catch (Exception e) {
-                    // 날짜 파싱 실패 등 → GPT로 자연스러운 안내
-                    String fallback = gptAnswerService.execute(username, chatSessionId,
-                            "사용자가 복용 현황을 확인하려고 해. 오늘 기준 복용 현황을 먼저 보여주고, 필요하면 다른 날짜도 물어봐줘.");
+                    String fallback = gptAnswerService.execute(
+                            username,
+                            chatSessionId,
+                            "사용자가 복용 현황을 확인하려고 해. 오늘 기준 복용 현황을 먼저 보여주고, 필요하면 다른 날짜도 물어봐줘."
+                    );
                     saveBotMessage(session, fallback);
                     return fallback;
                 }
             }
 
-            // 3) 최종 어절/표현 단서로 '토글(완료 기록)' 의도 감지
+            // 4) 최종 어절/표현 단서로 '토글(완료 기록)' 의도 감지
             if (isToggleByKeywords(message)) {
                 String result = dosageToggleService.execute(username, message);
-                // 불완전 응답 관리
                 if (isIncompleteResponse(result)) {
                     lastIncompleteDosageMessage.put(username, message);
                 } else {
@@ -110,7 +124,7 @@ public class MessageProcessorService {
                 return result;
             }
 
-            // 4) 애매한 단문이면 → 양자택일 질문
+            // 5) (레거시) 애매한 단문이면 → 양자택일 질문
             if (isAmbiguousBareUtterance(message)) {
                 String ask = disambiguationPrompt();
                 awaitingDisambiguation.put(username, true);
@@ -149,8 +163,11 @@ public class MessageProcessorService {
                     saveBotMessage(session, result);
                     return result;
                 } catch (Exception e) {
-                    String fallback = gptAnswerService.execute(username, chatSessionId,
-                            "사용자가 약 등록을 원하지만 이해하지 못했어. 다음 질문을 자연스럽게 해줘.");
+                    String fallback = gptAnswerService.execute(
+                            username,
+                            chatSessionId,
+                            "사용자가 약 등록을 원하지만 이해하지 못했어. 다음 질문을 자연스럽게 해줘."
+                    );
                     saveBotMessage(session, fallback);
                     return fallback;
                 }
@@ -170,8 +187,11 @@ public class MessageProcessorService {
                     saveBotMessage(session, result);
                     return result;
                 } catch (Exception e) {
-                    String fallback = gptAnswerService.execute(username, chatSessionId,
-                            "사용자가 날짜를 말했는데 이해하지 못했어. 무슨 날짜를 원하는지 다시 물어봐줘.");
+                    String fallback = gptAnswerService.execute(
+                            username,
+                            chatSessionId,
+                            "사용자가 날짜를 말했는데 이해하지 못했어. 무슨 날짜를 원하는지 다시 물어봐줘."
+                    );
                     saveBotMessage(session, fallback);
                     return fallback;
                 }
@@ -183,8 +203,11 @@ public class MessageProcessorService {
             return result;
 
         } catch (Exception e) {
-            String fallback = gptAnswerService.execute(username, chatSessionId,
-                    "사용자의 말을 이해하지 못했거나 오류가 발생했어. 자연스럽게 다시 물어봐줘.");
+            String fallback = gptAnswerService.execute(
+                    username,
+                    chatSessionId,
+                    "사용자의 말을 이해하지 못했거나 오류가 발생했어. 자연스럽게 다시 물어봐줘."
+            );
             saveBotMessage(session, fallback);
             return fallback;
         }
@@ -199,6 +222,48 @@ public class MessageProcessorService {
                 .content(content)
                 .build());
     }
+
+    /**
+     * “약 … 먹었어/복용했어/복용완료 …” 류면 시간/약 언급 여부와 무관하게 항상 양자택일 유도
+     */
+    private boolean triggersAlwaysDisambiguation(String msg) {
+        String compact = msg == null ? "" : msg.replaceAll("\\s+", "");
+        return compact.matches(".*약.*(먹었어|먹음|먹었습니다|복용했어|복용함|복용했습니다|복용완료|먹었어요|복용했어요).*");
+    }
+
+    /**
+     * 애매한 단문(레거시 유지): 약복용했어/오늘약먹었어 등
+     */
+    private boolean isAmbiguousBareUtterance(String msg) {
+        String m = msg.trim().replaceAll("\\s+", "");
+        if (m.equals("약복용했어")
+                || m.equals("복용했어")
+                || m.equals("오늘약먹었어")
+                || m.equals("오늘약복용했어")
+                || m.equals("오늘약다먹었어")
+                || m.equals("오늘약은먹었어")) {
+            return true;
+        }
+        String compact = msg.replaceAll("\\s+", "");
+        return compact.matches(".*오늘.*약.*(이미|전부|다|은)?먹었어.*");
+    }
+
+    // 양자택일 질문 문구
+    private String disambiguationPrompt() {
+        return "지금 ‘복용 완료로 기록’할까요, 아니면 ‘오늘 복용 현황을 알려드릴까요’?";
+    }
+
+    // 사용자 답에서 의도 선택
+    private IntentChoice pickFromDisambiguation(String userMsg) {
+        String m = userMsg.replaceAll("\\s+", "");
+        // 완료/기록류
+        if (m.matches(".*(완료|기록|처리|체크|변경|표시).*")) return IntentChoice.TOGGLE;
+        // 조회/현황류
+        if (m.matches(".*(현황|상태|알려줘|보여줘|조회|확인).*")) return IntentChoice.INQUIRE;
+        return IntentChoice.UNKNOWN;
+    }
+
+    private enum IntentChoice { TOGGLE, INQUIRE, UNKNOWN }
 
     /**
      * "아침/점심/저녁약"만 있는지(약 이름 없이) 판단
@@ -219,9 +284,7 @@ public class MessageProcessorService {
     // 조회(질문) 의도 키워드
     private boolean isInquiryByKeywords(String msg) {
         String m = msg.replaceAll("\\s+", "");
-        // 최종 어절/표현 단서
         if (m.matches(".*(알려줘|보여줘|어때|어찌|인지|여부|확인|현황|리스트|조회|상태|몇개|남은).*")) return true;
-        // "오늘/지금 + 어때/어떻게"
         if (m.matches(".*(오늘|지금).*(어때|어떻게).*")) return true;
         return false;
     }
@@ -230,54 +293,9 @@ public class MessageProcessorService {
     private boolean isToggleByKeywords(String msg) {
         String m = msg.replaceAll("\\s+", "");
         // 완료/기록/처리/체크/변경/표시/먹었어/복용했어 등
-        if (m.matches(".*(완료|기록|처리|체크|변경|표시).*")) return true;
-        // “점심약 했어”, “복용했어” 같은 보고형 표현
-        if (m.matches(".*(먹었어|복용했어|했어)$")) return true;
-        // 시간대 단서가 있으면 기본적으로 토글 성향
-        if (m.matches(".*(아침|점심|저녁|자정|취침|[0-2]?\\d시).*")) return true;
+        if (m.matches(".*(완료|기록|처리|체크|변경|표시|먹었어|복용했어|먹었습니다|복용했습니다|복용완료).*")) return true;
+        // 시간대 단서 + 행위
+        if (m.matches(".*(아침|점심|저녁|자정|취침|[0-2]?\\d시).*(완료|기록|처리|체크|변경|표시).*")) return true;
         return false;
     }
-
-    /**
-     * 애매한 단문(문장부호 없이) 감지:
-     *  - 약복용했어 / 복용했어
-     *  - 오늘약먹었어 / 오늘약복용했어
-     *  - 오늘약다먹었어 / 오늘약은먹었어
-     *  - (보강) "오늘...약...먹었어" 같은 변형도 정규식으로 커버
-     */
-    private boolean isAmbiguousBareUtterance(String msg) {
-        String m = msg.trim().replaceAll("\\s+", "");
-        if (m.equals("약복용했어")
-                || m.equals("복용했어")
-                || m.equals("오늘약먹었어")
-                || m.equals("오늘약복용했어")
-                || m.equals("오늘약다먹었어")
-                || m.equals("오늘약은먹었어")) {
-            return true;
-        }
-        // 공백/조사/강조 어휘가 섞여도 잡기 위한 보강 패턴
-        String compact = msg.replaceAll("\\s+", "");
-        // 예: "오늘 약 전부 먹었어", "오늘 약 이미 먹었어", "오늘은 약 먹었어" 등
-        if (compact.matches(".*오늘.*약.*(이미|전부|다|은)?먹었어.*")) {
-            return true;
-        }
-        return false;
-    }
-
-    // 양자택일 질문 문구
-    private String disambiguationPrompt() {
-        return "지금 ‘복용 완료로 기록’할까요, 아니면 ‘오늘 복용 현황을 알려드릴까요’?";
-    }
-
-    // 사용자 답에서 의도 선택
-    private IntentChoice pickFromDisambiguation(String userMsg) {
-        String m = userMsg.replaceAll("\\s+", "");
-        // 완료/기록류
-        if (m.matches(".*(완료|기록|처리|체크|변경|표시).*")) return IntentChoice.TOGGLE;
-        // 조회/현황류
-        if (m.matches(".*(현황|상태|알려줘|보여줘|조회|확인).*")) return IntentChoice.INQUIRE;
-        return IntentChoice.UNKNOWN;
-    }
-
-    private enum IntentChoice { TOGGLE, INQUIRE, UNKNOWN }
 }
