@@ -174,26 +174,24 @@ public class MedicineService {
     }
 
     // 특정 날짜 복약 정보 조회 API
-    @Transactional
+    @Transactional(readOnly = true)
     public MedicineGetDateResponseDTO getMedicinesByDate(String username, String date) {
         // 1. 회원 정보 조회
         Member member = memberRepository.findByUsername(username)
                 .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_NOT_FOUND));
 
-        // 2. 해당 날짜에 복용해야 하는 약 정보 조회
-        List<Calendar> calendars = calendarRepository.findByMemberAndDate(member, LocalDate.parse(date));
+        LocalDate targetDate = LocalDate.parse(date);
 
-        if (calendars.isEmpty()) {
-            throw new CustomException(ErrorCode.MEDICINE_NOT_FOUND_FOR_DATE);
-        }
+        // 2. 해당 날짜 캘린더 조회
+        List<Calendar> calendars = calendarRepository.findByMemberAndDate(member, targetDate);
 
-        // 3. 해당 날짜에 복용해야 하는 약 리스트
+        // 3. 약 리스트 구성 (없으면 그대로 빈 리스트)
         List<MedicineGetDateResponseDTO.MedicineDTO> medicineDTOList = new ArrayList<>();
         for (Calendar calendar : calendars) {
             Medicine medicine = calendar.getMedicine();
 
             // 4. 알림 시간 조회
-            List<Alarm> alarms = alarmRepository.findByMedicineAndDate(medicine, LocalDate.parse(date));
+            List<Alarm> alarms = alarmRepository.findByMedicineAndDate(medicine, targetDate);
 
             List<MedicineGetDateResponseDTO.AlarmDTO> alarmDTOs = alarms.stream()
                     .map(alarm -> MedicineGetDateResponseDTO.AlarmDTO.builder()
@@ -202,24 +200,27 @@ public class MedicineService {
                             .build())
                     .collect(Collectors.toList());
 
-            MedicineGetDateResponseDTO.MedicineDTO medicineDTO = MedicineGetDateResponseDTO.MedicineDTO.builder()
-                    .medicineId(medicine.getId())
-                    .medicineName(medicine.getName())
-                    .characteristic(medicine.getCharacteristic())
-                    .imageUrl(medicine.getImageUrl())
-                    .prescribed(medicine.getPrescribed())
-                    .duration(medicine.getDuration())
-                    .frequency(medicine.getFrequency())
-                    .alarms(alarmDTOs)
-                    .build();
+            MedicineGetDateResponseDTO.MedicineDTO medicineDTO =
+                    MedicineGetDateResponseDTO.MedicineDTO.builder()
+                            .medicineId(medicine.getId())
+                            .medicineName(medicine.getName())
+                            .characteristic(medicine.getCharacteristic())
+                            .imageUrl(medicine.getImageUrl())
+                            .prescribed(medicine.getPrescribed())
+                            .duration(medicine.getDuration())
+                            .frequency(medicine.getFrequency())
+                            .alarms(alarmDTOs)
+                            .build();
 
             medicineDTOList.add(medicineDTO);
         }
 
-        // 5. 최종 DTO 반환
+        // 5. 조회 결과 반환 (없으면 빈 리스트)
         return MedicineGetDateResponseDTO.builder()
-                .date(date)  // 요청된 날짜
-                .medicines(medicineDTOList)  // 해당 날짜에 복용해야 할 약 리스트
+                // .date(targetDate)         // DTO에 필드가 있으면 설정
+                // .count(medicineDTOList.size()) // DTO에 필드가 있으면 설정
+                .medicines(medicineDTOList) // ✅ 핵심: 빈 리스트 그대로 반환
+                // .message(medicineDTOList.isEmpty() ? "해당 날짜에 복약 정보가 없습니다." : "조회 성공")
                 .build();
     }
 

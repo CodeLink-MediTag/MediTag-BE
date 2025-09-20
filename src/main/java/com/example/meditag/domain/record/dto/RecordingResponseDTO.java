@@ -10,6 +10,8 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @Builder
 public class RecordingResponseDTO {
+
+    private Long id;
     //제목
     private String title;
 

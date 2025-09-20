@@ -19,6 +19,7 @@ public class RecordMapper {
     //Recording -> toResponseDTO
     public static RecordingResponseDTO toResponseDTO(Recording recording) {
         return RecordingResponseDTO.builder()
+                .id(recording.getId())
                 .title(recording.getTitle())
                 .recordingTime(recording.getRecordingTime())
                 .recordingFile(recording.getRecordingFile())
