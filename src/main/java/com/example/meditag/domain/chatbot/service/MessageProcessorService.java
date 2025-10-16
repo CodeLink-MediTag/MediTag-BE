@@ -66,13 +66,20 @@ public class MessageProcessorService {
             if (awaitingDisambiguation.getOrDefault(username, false)) {
                 IntentChoice choice = pickFromDisambiguation(message);
                 awaitingDisambiguation.remove(username);
+
+                // ✅ 직전 사용자 발화와 결합 (예: "오늘 아침 탈모약 먹었어" + "기록해줘")
+                String base = lastIncompleteDosageMessage.getOrDefault(username, "");
+                String combined = base.isEmpty() ? message : (base + " " + message);
+
                 String out;
                 if (choice == IntentChoice.TOGGLE) {
-                    out = dosageToggleService.execute(username, message);
-                    // 토글 성공/실패와 관계없이 미완성 상태 정리
+                    out = dosageToggleService.execute(username, combined);
+                    // 토글 성공/실패와 관계없이 임시 상태 정리
                     clearIncompleteDosage(username);
                 } else {
+                    // 조회의 경우 굳이 결합할 필요 없음
                     out = safeDateInquiry(username, message);
+                    clearIncompleteDosage(username);
                 }
                 saveBot(session, out);
                 return out;
@@ -119,6 +126,8 @@ public class MessageProcessorService {
             // 5) 애매한 단문 → 양자택일 유도
             if (isAmbiguousBareUtterance(message) || triggersAlwaysDisambiguation(message)) {
                 String ask = disambiguationPrompt();
+                // ✅ 양자택일로 진입하는 시점에 직전 발화를 저장해 둔다.
+                lastIncompleteDosageMessage.put(username, message);
                 awaitingDisambiguation.put(username, true);
                 saveBot(session, ask);
                 return ask;
@@ -134,28 +143,6 @@ public class MessageProcessorService {
             String fallback = "답변 생성 중 오류가 발생했어요. 다시 한번 말씀해주시겠어요?";
             saveBot(session, fallback);
             return fallback;
-        }
-    }
-
-    // ================== 헬퍼 ==================
-
-    /** 날짜 질의 실행 시 어떤 예외가 나도 안전하게 사용자 메시지를 반환 */
-    private String safeDateInquiry(String username, String message) {
-        try {
-            return dateMedicineInquiryService.execute(username, message);
-        } catch (Exception ex) {
-            log.warn("date inquiry failed, fallback to GPT. cause={}", ex.toString());
-            // 여기서 GPT 호출도 실패할 수 있으니 다시 한 번 예외 안전 처리
-            try {
-                return gptAnswerService.execute(
-                        username,
-                        null,
-                        "사용자가 복용 현황을 확인하려고 해. 오늘 기준 복용 현황을 먼저 보여주고, 필요하면 다른 날짜도 물어봐줘."
-                );
-            } catch (Exception gptEx) {
-                log.error("GPT fallback also failed", gptEx);
-                return "답변 생성 중 오류가 발생했어요. 다시 한번 말씀해주시겠어요?";
-            }
         }
     }
 
@@ -221,5 +208,27 @@ public class MessageProcessorService {
 
     private String disambiguationPrompt() {
         return "지금 ‘복용 완료로 기록’할까요, 아니면 ‘오늘 복용 현황을 알려드릴까요’? (예: 기록해줘 / 현황 알려줘)";
+    }
+
+    // ================== 헬퍼 ==================
+
+    /** 날짜 질의 실행 시 어떤 예외가 나도 안전하게 사용자 메시지를 반환 */
+    private String safeDateInquiry(String username, String message) {
+        try {
+            return dateMedicineInquiryService.execute(username, message);
+        } catch (Exception ex) {
+            log.warn("date inquiry failed, fallback to GPT. cause={}", ex.toString());
+            // 여기서 GPT 호출도 실패할 수 있으니 다시 한 번 예외 안전 처리
+            try {
+                return gptAnswerService.execute(
+                        username,
+                        null,
+                        "사용자가 복용 현황을 확인하려고 해. 오늘 기준 복용 현황을 먼저 보여주고, 필요하면 다른 날짜도 물어봐줘."
+                );
+            } catch (Exception gptEx) {
+                log.error("GPT fallback also failed", gptEx);
+                return "답변 생성 중 오류가 발생했어요. 다시 한번 말씀해주시겠어요?";
+            }
+        }
     }
 }

@@ -23,10 +23,9 @@ public class DosageToggleService {
     private final OpenAiService openAiService;
     private final AlarmRepository alarmRepository;
 
-    // ⚠️ “약 먹었어/복용했어/복용완료 …” 류는 이제 여기서 걸러서 false 반환
+    // “약 먹었어/복용했어/복용완료 …” 류는 항상 양자택일로 보내기 위해 여기선 false
     public boolean isApplicable(String message) {
         String m = normalize(message);
-        // 항상-양자택일 트리거에 해당하면 토글 적용 불가
         if (m.matches(".*약.*(먹었어|먹음|복용했어|복용함|복용했습니다|복용완료|먹었어요|복용했어요).*")) {
             return false;
         }
@@ -35,9 +34,10 @@ public class DosageToggleService {
         return m.matches(".*(아침|점심|저녁|자정|취침|[0-2]?\\d시).*(완료|기록|처리|체크|변경|표시).*");
     }
 
-    // ====== 규칙 기반 1차 추출: 빠르고 안정적 ======
+    // ====== 규칙 기반 1차 추출 ======
     private static final Pattern SLOT_PAT = Pattern.compile("(아침|점심|저녁)");
-    private static final Pattern MEDI_PAT = Pattern.compile("(타이레놀|이부프로펜|멕시펜|철분|비타민|오메가3|혈압약|위장약|감기약|두통약)");
+    // 탈모약 추가 (사전 등록 예시)
+    private static final Pattern MEDI_PAT = Pattern.compile("(탈모약|타이레놀|이부프로펜|멕시펜|철분|비타민|오메가3|혈압약|위장약|감기약|두통약)");
 
     private static String normalize(String s) {
         return s == null ? "" : s.toLowerCase(Locale.KOREAN).trim().replaceAll("\\s+", "");
@@ -64,7 +64,7 @@ public class DosageToggleService {
             return "어느 시간대의 약인지 잘 모르겠어요. '아침약 복용했어'처럼 말씀해주세요.";
         }
 
-        // 3) 시간대 → 시간 범위 (KST 고정)
+        // 3) 시간대 → 시간 범위 (KST)
         LocalDateTime[] range = getTimeRangeKST(timeSlot);
         LocalDateTime start = range[0];
         LocalDateTime end = range[1];
@@ -79,10 +79,11 @@ public class DosageToggleService {
                     timeSlot, "없음".equals(mediName) ? "해당" : mediName);
         }
 
-        // 5) 토글 수행 (트랜잭션 내)
+        // 5) 토글 수행
         for (Alarm alarm : alarms) {
             alarm.toggleTaking();
-            // alarmRepository.save(alarm); // 구현에 따라 필요 시 유지
+            // 필요 시 save 유지
+            // alarmRepository.save(alarm);
         }
 
         return String.format("오늘 %s %s 약의 복용 상태를 변경했어요! 잘하셨어요!",
@@ -96,7 +97,7 @@ public class DosageToggleService {
     }
 
     private Optional<String> extractMedicineByRule(String raw) {
-        // 간단: 사전 등록된 약명만 우선 매칭(실제로는 사용자 등록 약명 목록을 조회해 매칭 권장)
+        // 간단: 사전 등록된 약명만 우선 매칭(실제로는 사용자 등록 약명 목록과 매칭 권장)
         Matcher m = MEDI_PAT.matcher(raw);
         if (m.find()) return Optional.of(m.group(1));
         return Optional.empty();
@@ -107,7 +108,7 @@ public class DosageToggleService {
         return "없음".equals(mediName) && compact.contains("약");
     }
 
-    // ====== GPT 보조 파서: 엄격한 포맷 요구 + 정규식 파싱 ======
+    // ====== GPT 보조 파서 ======
     private Parsed askGptForParse(String user) {
         String prompt = """
             아래 문장에서 복용 시간대와 약 이름을 추출해줘.
@@ -154,7 +155,7 @@ public class DosageToggleService {
         ZoneId zone = ZoneId.of("Asia/Seoul");
         LocalDate today = LocalDate.now(zone);
         return switch (slot) {
-            case "아침" -> new LocalDateTime[]{ today.atTime(3, 0), today.atTime(10, 59) };
+            case "아침" -> new LocalDateTime[]{ today.atTime(3, 0),  today.atTime(10, 59) };
             case "점심" -> new LocalDateTime[]{ today.atTime(11, 0), today.atTime(15, 59) };
             case "저녁" -> new LocalDateTime[]{ today.atTime(16, 0), today.atTime(23, 59) };
             default -> throw new IllegalArgumentException("유효하지 않은 시간대입니다: " + slot);
