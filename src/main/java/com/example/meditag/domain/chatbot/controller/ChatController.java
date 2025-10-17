@@ -8,7 +8,7 @@ import com.example.meditag.domain.chatbot.entity.ChatSession;
 import com.example.meditag.domain.chatbot.entity.Message;
 import com.example.meditag.domain.chatbot.repository.MessageRepository;
 import com.example.meditag.domain.chatbot.service.ChatSessionService;
-import com.example.meditag.domain.chatbot.service.MessageProcessorService;
+import com.example.meditag.domain.chatbot.service.message.MessageProcessorService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;

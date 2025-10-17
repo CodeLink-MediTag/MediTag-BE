@@ -1,283 +1,325 @@
-package com.example.meditag.domain.chatbot.service;
+package com.example.meditag.domain.chatbot.service.message;
 
 import com.example.meditag.domain.chatbot.entity.ChatSession;
 import com.example.meditag.domain.chatbot.entity.Message;
 import com.example.meditag.domain.chatbot.repository.ChatSessionRepository;
 import com.example.meditag.domain.chatbot.repository.MessageRepository;
-import com.example.meditag.domain.chatbot.service.message.*;
+import com.example.meditag.domain.chatbot.service.OpenAiService;
 import com.example.meditag.domain.chatbot.service.message.register.MedicineRegisterService;
 import com.example.meditag.global.error.exception.CustomException;
 import com.example.meditag.global.error.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class MessageProcessorService {
 
-    private final MessageRepository messageRepository;
     private final ChatSessionRepository chatSessionRepository;
+    private final MessageRepository messageRepository;
 
-    private final DosageToggleService dosageToggleService;
     private final MedicineRegisterService medicineRegisterService;
     private final RecordingPlayService recordingPlayService;
     private final DateMedicineInquiryService dateMedicineInquiryService;
+    private final DosageToggleService dosageToggleService;
     private final GPTAnswerService gptAnswerService;
+    private final OpenAiService openAiService;
 
-    // 사용자가 직전에 '토글' 흐름을 불완전하게 끝낸 메시지 저장
+    /** ‘복용 토글’ 미완성 문장(사용자별) */
     private final Map<String, String> lastIncompleteDosageMessage = new ConcurrentHashMap<>();
-
-    // 직전 턴에서 양자택일(토글 vs 조회) 질문을 던졌는지 여부
+    /** 직전 턴 양자택일 상태 여부(사용자별) */
     private final Map<String, Boolean> awaitingDisambiguation = new ConcurrentHashMap<>();
+    /** 직전 언급 약명/시간대(사용자별) */
+    private final Map<String, String> lastMentionedMedicine = new ConcurrentHashMap<>();
+    private final Map<String, String> lastMentionedTime = new ConcurrentHashMap<>();
+
+    /** 약명으로 보면 안 되는 금지 토큰 */
+    private static final Set<String> MEDICINE_FORBIDDEN_TOKENS = Set.of(
+            "먹을", "먹을약", "먹어야", "먹어야할", "복용할", "남은", "아직안먹은",
+            "무슨", "뭐야", "뭐임", "어떤", "모든", "약들", "약이", "약은"
+    );
 
     public String processMessage(String username, Long chatSessionId, String message) {
-
         ChatSession session = chatSessionRepository.findById(chatSessionId)
                 .orElseThrow(() -> new CustomException(ErrorCode.CHAT_SESSION_NOT_FOUND));
 
-        // 사용자 발화 저장
-        messageRepository.save(Message.builder()
-                .chatSession(session)
-                .sender(Message.Sender.USER)
-                .content(message)
-                .build());
+        saveUser(session, message);
 
         try {
             // 0) 약 등록 플로우가 진행 중이면 우선 처리
             if (medicineRegisterService.isInProgress(username)) {
-                String result = medicineRegisterService.execute(username, message);
-                saveBotMessage(session, result);
-                return result;
+                String out = medicineRegisterService.execute(username, message);
+                if (!medicineRegisterService.isInProgress(username)) resetEphemeralStates(username);
+                saveBot(session, out);
+                return out;
             }
 
-            // 1) 직전 턴에 '양자택일 질문'을 던진 상태라면, 이번 메시지로 분기 결정
+            // 0-1) 과거형 “먹었어/복용했어” → 반드시 양자택일 유도
+            if (triggersAlwaysDisambiguation(message)) {
+                awaitingDisambiguation.put(username, true);
+                lastIncompleteDosageMessage.put(username, message);
+                rememberContext(username, message);
+                String q = disambiguationPrompt();
+                saveBot(session, q);
+                return q;
+            }
+
+            // 0-2) “오늘 먹을 약/남은 약/아직 안 먹은 약 …” → 무조건 ‘조회’ 라우팅
+            if (isFutureOrRemainingIntakeQuery(message)) {
+                String out = safeDateInquiry(username, message);
+                rememberContext(username, message);
+                saveBot(session, out);
+                return out;
+            }
+
+            // 1) 직전 턴이 양자택일 상태였다면 이번 메시지로 분기
             if (awaitingDisambiguation.getOrDefault(username, false)) {
                 IntentChoice choice = pickFromDisambiguation(message);
-                if (choice == IntentChoice.TOGGLE) {
-                    String result = dosageToggleService.execute(username, message);
-                    awaitingDisambiguation.remove(username);
-                    saveBotMessage(session, result);
-                    return result;
-                } else if (choice == IntentChoice.INQUIRE) {
-                    try {
-                        String result = dateMedicineInquiryService.execute(username, message);
-                        awaitingDisambiguation.remove(username);
-                        saveBotMessage(session, result);
-                        return result;
-                    } catch (Exception e) {
-                        String fallback = gptAnswerService.execute(username, chatSessionId,
-                                "사용자가 복용 현황을 보려는 것 같지만 날짜를 확정하지 못했어. 오늘 복용 현황을 안내해줘.");
-                        awaitingDisambiguation.remove(username);
-                        saveBotMessage(session, fallback);
-                        return fallback;
-                    }
-                } else {
-                    // 여전히 모호하면 한 번 더 유도
-                    String ask = disambiguationPrompt();
-                    saveBotMessage(session, ask);
+                awaitingDisambiguation.remove(username);
+
+                String intentReady = completeWithMemory(username, message);
+                String base = lastIncompleteDosageMessage.getOrDefault(username, "");
+                String combined = base.isBlank() ? intentReady : (base + " " + intentReady);
+
+                String out;
+                if (choice == IntentChoice.TOGGLE) out = dosageToggleService.execute(username, combined);
+                else out = safeDateInquiry(username, combined);
+
+                clearIncompleteDosage(username);
+                rememberContext(username, combined);
+                saveBot(session, out);
+                return out;
+            }
+
+            // 2) 등록/토글 우선 처리
+            if (medicineRegisterServiceTrigger(message)) {
+                String out = medicineRegisterService.execute(username, message);
+                if (!medicineRegisterService.isInProgress(username)) resetEphemeralStates(username);
+                saveBot(session, out);
+                return out;
+            }
+
+            if (dosageToggleService.isApplicable(message)) {
+                rememberContext(username, message);
+                String out = dosageToggleService.execute(username, message);
+                if (isIncompleteResponse(out)) lastIncompleteDosageMessage.put(username, message);
+                else clearIncompleteDosage(username);
+                saveBot(session, out);
+                return out;
+            }
+
+            // 3) “아침약/아침/탈모약” 같은 단답 → 직전 컨텍스트 자동 결합 후 토글
+            if (isTimeOnlyOrMedicineOnly(message)) {
+                String completed = completeWithMemory(username, message);
+                if (completed == null) {
+                    String ask = "어느 시간대와 어떤 약인지 알려주세요. 예) '아침 탈모약'";
+                    saveBot(session, ask);
                     return ask;
                 }
+                String out = dosageToggleService.execute(username, completed);
+                clearIncompleteDosage(username);
+                rememberContext(username, completed);
+                saveBot(session, out);
+                return out;
             }
 
-            // 2) 최종 어절/표현 단서로 '조회(질문)' 의도 우선 감지
+            // 4) 일반 조회 의도
             if (isInquiryByKeywords(message)) {
-                try {
-                    String result = dateMedicineInquiryService.execute(username, message);
-                    saveBotMessage(session, result);
-                    return result;
-                } catch (Exception e) {
-                    // 날짜 파싱 실패 등 → GPT로 자연스러운 안내
-                    String fallback = gptAnswerService.execute(username, chatSessionId,
-                            "사용자가 복용 현황을 확인하려고 해. 오늘 기준 복용 현황을 먼저 보여주고, 필요하면 다른 날짜도 물어봐줘.");
-                    saveBotMessage(session, fallback);
-                    return fallback;
-                }
+                String out = safeDateInquiry(username, message);
+                saveBot(session, out);
+                return out;
             }
 
-            // 3) 최종 어절/표현 단서로 '토글(완료 기록)' 의도 감지
-            if (isToggleByKeywords(message)) {
-                String result = dosageToggleService.execute(username, message);
-                // 불완전 응답 관리
-                if (isIncompleteResponse(result)) {
-                    lastIncompleteDosageMessage.put(username, message);
-                } else {
-                    lastIncompleteDosageMessage.remove(username);
-                }
-                saveBotMessage(session, result);
-                return result;
+            // 5) 스몰토크 (안녕 등)
+            if (isSmallTalk(message)) {
+                String answer = smallTalkLocalReply(message);
+                saveBot(session, answer);
+                return answer;
             }
 
-            // 4) 애매한 단문이면 → 양자택일 질문
-            if (isAmbiguousBareUtterance(message)) {
-                String ask = disambiguationPrompt();
-                awaitingDisambiguation.put(username, true);
-                saveBotMessage(session, ask);
-                return ask;
-            }
-
-            // === 기존 로직 ===
-
-            // (A) 토글 서비스가 적용 가능하면 처리
-            if (dosageToggleService.isApplicable(message)) {
-                String result = dosageToggleService.execute(username, message);
-                if (isIncompleteResponse(result)) {
-                    lastIncompleteDosageMessage.put(username, message);
-                } else {
-                    lastIncompleteDosageMessage.remove(username);
-                }
-                saveBotMessage(session, result);
-                return result;
-            }
-
-            // (B) 시간대만 있는 후속 메시지 결합 처리
-            if (isTimeOnlyMessage(message) && lastIncompleteDosageMessage.containsKey(username)) {
-                String priorMessage = lastIncompleteDosageMessage.get(username);
-                String combinedMessage = priorMessage + " " + message;
-                String result = dosageToggleService.execute(username, combinedMessage);
-                lastIncompleteDosageMessage.remove(username);
-                saveBotMessage(session, result);
-                return result;
-            }
-
-            // (C) 약 등록 시작 요청
-            if (medicineRegisterService.isApplicable(message)) {
-                try {
-                    String result = medicineRegisterService.execute(username, message);
-                    saveBotMessage(session, result);
-                    return result;
-                } catch (Exception e) {
-                    String fallback = gptAnswerService.execute(username, chatSessionId,
-                            "사용자가 약 등록을 원하지만 이해하지 못했어. 다음 질문을 자연스럽게 해줘.");
-                    saveBotMessage(session, fallback);
-                    return fallback;
-                }
-            }
-
-            // (D) 녹음 재생
-            if (recordingPlayService.isApplicable(message)) {
-                String result = recordingPlayService.execute(username, message);
-                saveBotMessage(session, result);
-                return result;
-            }
-
-            // (E) 날짜 기반 조회
-            if (dateMedicineInquiryService.isApplicable(message)) {
-                try {
-                    String result = dateMedicineInquiryService.execute(username, message);
-                    saveBotMessage(session, result);
-                    return result;
-                } catch (Exception e) {
-                    String fallback = gptAnswerService.execute(username, chatSessionId,
-                            "사용자가 날짜를 말했는데 이해하지 못했어. 무슨 날짜를 원하는지 다시 물어봐줘.");
-                    saveBotMessage(session, fallback);
-                    return fallback;
-                }
-            }
-
-            // (F) 일반 GPT 응답
-            String result = gptAnswerService.execute(username, chatSessionId, message);
-            saveBotMessage(session, result);
-            return result;
+            // 6) 기타 → 앱 GPT
+            String out = gptAnswerService.execute(username, chatSessionId, message);
+            saveBot(session, out);
+            return out;
 
         } catch (Exception e) {
-            String fallback = gptAnswerService.execute(username, chatSessionId,
-                    "사용자의 말을 이해하지 못했거나 오류가 발생했어. 자연스럽게 다시 물어봐줘.");
-            saveBotMessage(session, fallback);
+            log.error("processMessage error", e);
+            String fallback = "답변 생성 중 오류가 발생했어요. 다시 한번 말씀해주시겠어요?";
+            saveBot(session, fallback);
             return fallback;
         }
     }
 
-    // === 유틸리티들 ===
+    /* ========= 컨텍스트 보관/보정 ========= */
 
-    private void saveBotMessage(ChatSession session, String content) {
-        messageRepository.save(Message.builder()
-                .chatSession(session)
-                .sender(Message.Sender.BOT)
-                .content(content)
-                .build());
+    private void rememberContext(String username, String msg) {
+        if (msg == null) return;
+        String med = extractMedicine(msg);
+        String time = extractTime(msg);
+        if (med != null && !med.isBlank()) lastMentionedMedicine.put(username, med);
+        if (time != null && !time.isBlank()) lastMentionedTime.put(username, time);
     }
 
-    /**
-     * "아침/점심/저녁약"만 있는지(약 이름 없이) 판단
-     */
-    private boolean isTimeOnlyMessage(String message) {
-        return message.matches(".*(아침|점심|저녁)약.*")
-                && !message.matches(".*(타이레놀|탈모약|감기약|혈압약|위장약).*");
+    /** 단답(아침/아침약/탈모약 등)을 직전 맥락과 합쳐 완전 문장으로 보정 */
+    private String completeWithMemory(String username, String msg) {
+        String time = extractTime(msg);
+        String med = extractMedicine(msg);
+        if (time == null || time.isBlank()) time = lastMentionedTime.get(username);
+        if (med  == null || med.isBlank())  med  = lastMentionedMedicine.get(username);
+        if (time == null || med == null) return null;
+        return "오늘 " + time + " " + med + " 먹었어";
     }
 
-    /**
-     * 토글 응답이 불완전한지(추가 정보 요청/알람 없음 등)
-     */
-    private boolean isIncompleteResponse(String response) {
-        return response.contains("어느 시간대의 약인지")
-                || response.contains("복용 알람이 없어요");
+    private String extractMedicine(String msg) {
+        if (msg == null) return null;
+        String compact = msg.replaceAll("\\s+", "");
+
+        // 금지 토큰 포함 시 약명으로 보지 않음
+        for (String ban : MEDICINE_FORBIDDEN_TOKENS) {
+            if (compact.contains(ban)) return null;
+        }
+        // “…약” 패턴 (탈모약/감기약/혈압약 등)
+        Matcher m = Pattern.compile("([가-힣A-Za-z0-9]+)약").matcher(compact);
+        if (m.find()) {
+            String cand = m.group(1) + "약";
+            if (!MEDICINE_FORBIDDEN_TOKENS.contains(cand)) return cand;
+        }
+        // ‘약’ 없는 상용명도 일부 지원
+        Matcher m2 = Pattern.compile("(타이레놀|유산균|오메가3|비타민|멀티비타민|프로바이오틱스|아스피린|이부프로펜|아세트아미노펜)")
+                .matcher(compact);
+        if (m2.find()) return m2.group(1);
+        return null;
     }
 
-    // 조회(질문) 의도 키워드
+    private String extractTime(String msg) {
+        if (msg == null) return null;
+        String m = msg.replaceAll("\\s+", "");
+        if (m.contains("아침약") || m.contains("아침")) return "아침";
+        if (m.contains("점심약") || m.contains("점심")) return "점심";
+        if (m.contains("저녁약") || m.contains("저녁")) return "저녁";
+        return null;
+    }
+
+    private boolean isTimeOnlyOrMedicineOnly(String msg) {
+        String t = extractTime(msg);
+        String med = extractMedicine(msg);
+        return (t != null && med == null) || (t == null && med != null) || msg.replaceAll("\\s+","").matches("(아침약|점심약|저녁약)");
+    }
+
+    /* ========= 저장 공통 ========= */
+
+    private void resetEphemeralStates(String username) {
+        awaitingDisambiguation.remove(username);
+        lastIncompleteDosageMessage.remove(username);
+    }
+    private void clearIncompleteDosage(String username) {
+        lastIncompleteDosageMessage.remove(username);
+    }
+    private void saveUser(ChatSession session, String content) {
+        try {
+            messageRepository.save(Message.builder()
+                    .chatSession(session)
+                    .sender(Message.Sender.USER)
+                    .content(content)
+                    .build());
+        } catch (Exception e) { log.warn("user message save failed: {}", e.toString()); }
+    }
+    private void saveBot(ChatSession session, String content) {
+        try {
+            messageRepository.save(Message.builder()
+                    .chatSession(session)
+                    .sender(Message.Sender.BOT)
+                    .content(content)
+                    .build());
+        } catch (Exception e) { log.warn("bot message save failed: {}", e.toString()); }
+    }
+
+    /* ========= 서비스 호출 래핑 ========= */
+
+    private String safeDateInquiry(String username, String message) {
+        try {
+            return dateMedicineInquiryService.execute(username, message);
+        } catch (Exception ex) {
+            log.warn("date inquiry failed, fallback to GPT. cause={}", ex.toString());
+            try {
+                return gptAnswerService.execute(
+                        username, null,
+                        "사용자가 복용 현황/오늘 먹을 약을 확인하려고 해. 오늘 기준 남은 약을 먼저 보여주고, 필요하면 다른 시간대도 물어봐줘."
+                );
+            } catch (Exception gptEx) {
+                log.error("GPT fallback also failed", gptEx);
+                return "답변 생성 중 오류가 발생했어요. 다시 한번 말씀해주시겠어요?";
+            }
+        }
+    }
+
+    /* ========= 분류/규칙 ========= */
+
+    private boolean medicineRegisterServiceTrigger(String msg) {
+        String m = msg.replaceAll("\\s+", "");
+        return m.matches(".*(약|알림).*등록(할게|할래|해줘|해|하고싶어|추가).*");
+    }
+
+    /** 일반 조회 키워드 (기존) */
     private boolean isInquiryByKeywords(String msg) {
         String m = msg.replaceAll("\\s+", "");
-        // 최종 어절/표현 단서
-        if (m.matches(".*(알려줘|보여줘|어때|어찌|인지|여부|확인|현황|리스트|조회|상태|몇개|남은).*")) return true;
-        // "오늘/지금 + 어때/어떻게"
-        if (m.matches(".*(오늘|지금).*(어때|어떻게).*")) return true;
+        if (m.matches(".*(알려줘|보여줘|확인|현황|리스트|조회|상태|몇개|남은|먹을약|먹어야).*")) return true;
+        if (m.matches(".*(오늘|지금).*(약|복용).*(뭐|뭐야|있어|알려줘).*")) return true;
         return false;
     }
 
-    // 토글(완료/기록) 의도 키워드
-    private boolean isToggleByKeywords(String msg) {
+    /** ★ ‘오늘 먹을/복용할/남은/미복용’ 류 → 무조건 조회 */
+    private boolean isFutureOrRemainingIntakeQuery(String msg) {
         String m = msg.replaceAll("\\s+", "");
-        // 완료/기록/처리/체크/변경/표시/먹었어/복용했어 등
-        if (m.matches(".*(완료|기록|처리|체크|변경|표시).*")) return true;
-        // “점심약 했어”, “복용했어” 같은 보고형 표현
-        if (m.matches(".*(먹었어|복용했어|했어)$")) return true;
-        // 시간대 단서가 있으면 기본적으로 토글 성향
-        if (m.matches(".*(아침|점심|저녁|자정|취침|[0-2]?\\d시).*")) return true;
-        return false;
+        return m.matches(".*((오늘|지금)?(먹을|복용할)약(뭐|뭐야|알려줘|있어)?).*")
+                || m.matches(".*(먹어야(할)?약|남은약|아직안먹은약|미복용).*");
     }
 
-    /**
-     * 애매한 단문(문장부호 없이) 감지:
-     *  - 약복용했어 / 복용했어
-     *  - 오늘약먹었어 / 오늘약복용했어
-     *  - 오늘약다먹었어 / 오늘약은먹었어
-     *  - (보강) "오늘...약...먹었어" 같은 변형도 정규식으로 커버
-     */
-    private boolean isAmbiguousBareUtterance(String msg) {
-        String m = msg.trim().replaceAll("\\s+", "");
-        if (m.equals("약복용했어")
-                || m.equals("복용했어")
-                || m.equals("오늘약먹었어")
-                || m.equals("오늘약복용했어")
-                || m.equals("오늘약다먹었어")
-                || m.equals("오늘약은먹었어")) {
-            return true;
-        }
-        // 공백/조사/강조 어휘가 섞여도 잡기 위한 보강 패턴
-        String compact = msg.replaceAll("\\s+", "");
-        // 예: "오늘 약 전부 먹었어", "오늘 약 이미 먹었어", "오늘은 약 먹었어" 등
-        if (compact.matches(".*오늘.*약.*(이미|전부|다|은)?먹었어.*")) {
-            return true;
-        }
-        return false;
+    /** 과거형/확정형만 디스앰빅(미래형 ‘먹을’ 제외) */
+    private boolean triggersAlwaysDisambiguation(String msg) {
+        String m = msg.replaceAll("\\s+", "");
+        return m.matches(".*(먹었어|먹음|먹었다|복용했어|복용완료).*");
     }
 
-    // 양자택일 질문 문구
+    private boolean isIncompleteResponse(String serviceOutput) {
+        return serviceOutput != null && serviceOutput.contains("어느 시간대");
+    }
+
+    private enum IntentChoice { TOGGLE, INQUIRY }
+    private IntentChoice pickFromDisambiguation(String msg) {
+        String m = msg == null ? "" : msg.replaceAll("\\s+", "");
+        if (m.matches(".*(완료|기록|체크|변경|표시|했어|했어요|했지|기록해줘|체크해줘).*")) return IntentChoice.TOGGLE;
+        return IntentChoice.INQUIRY;
+    }
+
     private String disambiguationPrompt() {
-        return "지금 ‘복용 완료로 기록’할까요, 아니면 ‘오늘 복용 현황을 알려드릴까요’?";
+        return "지금 ‘복용 완료로 기록’할까요, 아니면 ‘오늘 복용 현황을 알려드릴까요’? (예: 기록해줘 / 현황 알려줘)";
     }
 
-    // 사용자 답에서 의도 선택
-    private IntentChoice pickFromDisambiguation(String userMsg) {
-        String m = userMsg.replaceAll("\\s+", "");
-        // 완료/기록류
-        if (m.matches(".*(완료|기록|처리|체크|변경|표시).*")) return IntentChoice.TOGGLE;
-        // 조회/현황류
-        if (m.matches(".*(현황|상태|알려줘|보여줘|조회|확인).*")) return IntentChoice.INQUIRE;
-        return IntentChoice.UNKNOWN;
+    /* ========= 스몰토크 ========= */
+
+    private boolean isSmallTalk(String msg) {
+        if (msg == null) return false;
+        String m = msg.replaceAll("\\s+","").toLowerCase();
+        return m.matches(".*(안녕|안뇽|하이|헬로|반가워|굿모닝|굿이브닝|잘지냈|고마워|감사|ㅎ+|ㅋㅋ+|ㅎㅎ+|반갑).*");
     }
 
-    private enum IntentChoice { TOGGLE, INQUIRE, UNKNOWN }
+    private String smallTalkLocalReply(String msg) {
+        String m = msg == null ? "" : msg.replaceAll("\\s+","").toLowerCase();
+        if (m.contains("안녕") || m.contains("하이") || m.contains("헬로") || m.contains("반가워")) {
+            return "안녕하세요! 😊 무엇을 도와드릴까요? (예: ‘오늘 먹을 약 뭐야’, ‘현황 알려줘’, ‘오늘 아침 약 먹었어’)";
+        }
+        if (m.contains("고마워") || m.contains("감사")) {
+            return "도움이 되어 기뻐요! 필요한 게 있으면 언제든 말씀해 주세요.";
+        }
+        return "네, 여기 있어요 👋 무엇을 도와드릴까요?";
+    }
 }
