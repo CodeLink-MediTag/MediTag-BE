@@ -86,18 +86,22 @@ public class MessageProcessorService {
     private boolean isDateInquiry(String s) {
         String c = compact(s);
         if (c.isEmpty()) return false;
+
         // 오늘/내일/모레/특정 날짜 + 먹을/먹어야할/복용할 + 약
         if (c.matches(".*((오늘|내일|모레|\\d{1,2}월\\d{1,2}일)?(먹을|먹어야할|복용할)약(알려줘|머야|뭐야|뭐)).*")) {
             return true;
         }
+
         // 날짜 없이도 오늘/내일/모레 패턴 + 약 + 뭐야/알려줘/목록/리스트
         if ((c.contains("오늘") || c.contains("내일") || c.contains("모레") || c.matches(".*\\d{1,2}월\\d{1,2}일.*"))
-                && c.contains("약") && (c.contains("뭐야") || c.contains("머야") || c.contains("알려줘") || c.contains("목록") || c.contains("리스트"))) {
+                && c.contains("약")
+                && (c.contains("뭐야") || c.contains("머야") || c.contains("알려줘") || c.contains("목록") || c.contains("리스트"))) {
             if (!(c.contains("먹은") && !c.contains("먹을")) && !c.contains("미복용") && !c.contains("남은")
                     && !(c.contains("아직") && c.contains("안") && c.contains("먹"))) {
                 return true;
             }
         }
+
         // 시간대 + 약 + 뭐야/알려줘/리스트
         if ((c.contains("아침") || c.contains("점심") || c.contains("저녁"))
                 && (c.contains("약뭐야") || c.contains("약뭐있어") || c.contains("뭐먹을")
@@ -108,10 +112,14 @@ public class MessageProcessorService {
             }
         }
 
+        // 기본값
+        return false;
+    }
+
+    /** 공백 제거 + 소문자 */
     private String compact(String s) {
         return s == null ? "" : s.replaceAll("\\s+", "").toLowerCase();
     }
-}
 
     private String helloReply() {
         return "안녕하세요. 무엇을 도와드릴까요?\n- 오늘 먹을 약 뭐야\n- 오늘 아침 약 먹었어";

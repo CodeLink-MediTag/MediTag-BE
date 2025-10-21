@@ -6,6 +6,7 @@ import com.example.meditag.domain.chatbot.service.OpenAiService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.*;
 import java.util.*;
@@ -75,7 +76,7 @@ public class DosageToggleService {
             String tip = candidates.isEmpty()
                     ? ""
                     : "\n예: " + String.join(", ", candidates);
-            return String.format("%s %s 시간대에 어떤 약을 복용하셨나요? 약 이름을 알려주시면 기록해 드릴게요 🙂%s",
+            return String.format("%s %s 시간대에 어떤 약을 복용하셨나요? 약 이름을 알려주시면 기록해 드릴게요 %s",
                     dateStr, timeSlot, tip);
         }
 
@@ -98,7 +99,7 @@ public class DosageToggleService {
             String tip = candidates.isEmpty()
                     ? "해당 시간대 복용 알람을 찾을 수 없어요."
                     : "해당 시간대 약 목록: " + String.join(", ", candidates);
-            return String.format("%d월 %d일 %s 시간대에 '%s' 약 알람이 없어요.\n%s\n정확한 약 이름을 알려주시면 기록할게요 🙂",
+            return String.format("%d월 %d일 %s 시간대에 '%s' 약 알람이 없어요.\n%s\n정확한 약 이름을 알려주시면 기록할게요",
                     targetDate.getMonthValue(), targetDate.getDayOfMonth(), timeSlot, given, tip);
         }
 
@@ -110,7 +111,7 @@ public class DosageToggleService {
         // 10) 응답: 표시용 이름은 '약' 제거해 자연스럽게
         String displayName = withoutYak.isBlank() ? given : withoutYak;
         String dateStr = String.format("%d월 %d일", targetDate.getMonthValue(), targetDate.getDayOfMonth());
-        return String.format("%s %s '%s' 복용 상태를 변경했어요! 잘하셨어요 👏",
+        return String.format("%s %s '%s'약의 복용 상태를 변경했어요! 잘하셨어요",
                 dateStr, timeSlot, displayName);
     }
 
