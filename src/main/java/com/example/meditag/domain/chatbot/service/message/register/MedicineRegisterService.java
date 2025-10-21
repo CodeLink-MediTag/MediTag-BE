@@ -354,10 +354,9 @@ public class MedicineRegisterService {
     /** 처방약 질문 문구 */
     private String buildPrescriptionTimeQuestion(int timesPerDay) {
         String base = """
-                처방약은 고정 시간으로 복용 알림을 설정해요.
-                아침(오전 8:00), 점심(오후 12:00), 저녁(오후 6:00) 중에서 복용 횟수에 맞게 선택해 주세요.
-                예) 1회: 아침 / 2회: 아침 저녁 / 3회: 아침 점심 저녁
-                """;
+                처방약은 정해진 시간에 복용 알림을 드려요.
+            아침(8시), 점심(12시), 저녁(6시) 중에서 복용 횟수에 맞게 선택해 주세요.
+            """;
         return base + "현재 입력된 1일 복용 횟수: " + timesPerDay + "회";
     }
 
