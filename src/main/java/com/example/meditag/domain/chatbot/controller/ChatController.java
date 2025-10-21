@@ -8,7 +8,7 @@ import com.example.meditag.domain.chatbot.entity.ChatSession;
 import com.example.meditag.domain.chatbot.entity.Message;
 import com.example.meditag.domain.chatbot.repository.MessageRepository;
 import com.example.meditag.domain.chatbot.service.ChatSessionService;
-import com.example.meditag.domain.chatbot.service.message.MessageProcessorService;
+import com.example.meditag.domain.chatbot.service.MessageProcessorService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -47,7 +47,7 @@ public class ChatController implements ChatApi {
             @RequestBody MessageDTO request // 사용자가 보낸 메시지 본문 (JSON -> 객체로 바인딩)
     ) {
         // 메시지를 처리하고 챗봇 응답을 생성
-        String responseContent = messageProcessorService.processMessage(
+        String responseContent = messageProcessorService.process(
                 user.getUsername(), // 사용자 이름
                 chatSessionId, // 채팅 세션 ID
                 request.getContent() // 사용자가 입력한 메시지 내용

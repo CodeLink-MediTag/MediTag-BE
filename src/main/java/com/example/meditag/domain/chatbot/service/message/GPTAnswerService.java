@@ -1,185 +1,177 @@
 package com.example.meditag.domain.chatbot.service.message;
 
-import com.example.meditag.domain.chatbot.entity.Message;
-import com.example.meditag.domain.chatbot.repository.MessageRepository;
-import com.example.meditag.domain.chatbot.service.OpenAiService;
 import com.example.meditag.domain.alarm.entity.Alarm;
 import com.example.meditag.domain.alarm.repository.AlarmRepository;
-import com.example.meditag.domain.calendar.entity.Calendar;
-import com.example.meditag.domain.medicine.entity.Medicine;
-import com.example.meditag.domain.medicine.repository.MedicineRepository;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.example.meditag.domain.chatbot.service.OpenAiService;
+import com.example.meditag.domain.member.entity.Member;
+import com.example.meditag.domain.member.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.util.Comparator;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Optional;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class GPTAnswerService {
 
-    private final MessageRepository messageRepository;
     private final OpenAiService openAiService;
-    private final MedicineRepository medicineRepository;
     private final AlarmRepository alarmRepository;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final MemberRepository memberRepository; // ✅ 이름 조회를 위해 주입
 
-    public boolean isApplicable(String message) {
-        return true;
-    }
+    public String execute(String username, Long chatSessionId, String userMessage) {
+        try {
+            String msg = (userMessage == null ? "" : userMessage.trim());
 
-    public String execute(String username, Long chatSessionId, String message) {
-        List<Message> previousMessages = messageRepository.findByChatSessionId(chatSessionId);
-        String conversationHistory = previousMessages.stream()
-                .map(m -> (m.getSender() == Message.Sender.USER ? "사용자: " : "챗봇: ") + m.getContent())
-                .collect(Collectors.joining("\n"));
-
-        List<Medicine> medicines = medicineRepository.findByMember_Username(username);
-        List<Alarm> alarms = alarmRepository.findByCalendar_Medicine_Member_Username(username);
-
-        LocalDate today = LocalDate.now();
-
-        // ✅ 등록된 약 이름만 보여주는 처리 추가
-        if (message.matches(".*(지금|현재|등록).*약.*(뭐|무엇|있어).*")) {
-            if (medicines.isEmpty()) {
-                return "현재 등록된 약이 없습니다.";
+            // ✅ 0) "내 이름은 뭐야" 유형 선처리: 이메일 대신 회원 이름/닉네임을 반환
+            if (isAskMyName(msg)) {
+                String displayName = resolveDisplayName(username);
+                return String.format("등록된 이름으로는 '%s'님이에요 🙂", displayName);
             }
 
-            List<String> nameList = medicines.stream()
-                    .map(Medicine::getName)
-                    .distinct()
-                    .collect(Collectors.toList());
+            // 1) 사용자 컨텍스트와 함께 GPT에게 질문
+            String aiResponse = askGptWithContext(username, msg);
 
-            String formattedNames;
-            if (nameList.size() == 1) {
-                formattedNames = nameList.get(0);
-            } else if (nameList.size() == 2) {
-                formattedNames = nameList.get(0) + "와 " + nameList.get(1);
+            // 2) GPT 응답이 있으면 그대로 반환
+            if (aiResponse != null && !aiResponse.isBlank()) {
+                return aiResponse;
+            }
+
+            // 3) GPT 호출 실패 시 기본 메시지
+            return "죄송해요, 잠시 문제가 생겼어요. 다시 말씀해 주시겠어요?";
+
+        } catch (Exception e) {
+            log.error("GPTAnswerService error: {}", e.getMessage());
+            return "대답을 준비하다가 문제가 생겼어요. 다시 말씀해 주시겠어요?";
+        }
+    }
+
+    /** "내 이름"을 묻는 다양한 표현을 감지 */
+    private boolean isAskMyName(String message) {
+        if (message == null || message.isBlank()) return false;
+        String c = message.replaceAll("\\s+", "").toLowerCase();
+        // 한국어/변형: 내이름, 내이름은뭐야, 내이름알려줘, 나는누구, 내가누구
+        if (c.matches(".*(내이름|내이름은|내이름뭐야|내이름이뭐야|내이름알려줘|나는누구|내가누구).*")) return true;
+        // 영문: what's my name / what is my name
+        return c.contains("whatsmyname") || c.contains("whatismyname");
+    }
+
+    /**
+     * 사용자 표시 이름 결정 로직
+     * 1) Member.name → 2) Member.nickname → 3) 이메일 로컬파트( @ 앞 ) → 4) "사용자"
+     */
+    private String resolveDisplayName(String username) {
+        try {
+            Optional<Member> opt = memberRepository.findByUsername(username);
+            if (opt.isPresent()) {
+                Member m = opt.get();
+                // name 필드가 있으면 우선 사용
+                try {
+                    String name = m.getName();
+                    if (name != null && !name.isBlank()) return name.trim();
+                } catch (Exception ignore) {}
+            }
+        } catch (Exception e) {
+            log.warn("resolveDisplayName failed: {}", e.toString());
+        }
+        // 이메일에서 @ 앞 부분을 예비 표시명으로 사용
+        if (username != null && username.contains("@")) {
+            String local = username.substring(0, username.indexOf('@'));
+            return local.isBlank() ? "사용자" : local;
+        }
+        return "사용자";
+    }
+
+    /**
+     * 사용자의 약물 정보와 복용 기록을 포함한 컨텍스트를 만들어서 GPT에 질문
+     */
+    private String askGptWithContext(String username, String userQuestion) {
+        try {
+            // 1. 사용자의 오늘 약물 정보 수집
+            LocalDate today = LocalDate.now();
+            List<Alarm> todayAlarms = alarmRepository.findByUsernameAndDateTimeRange(
+                    username, today.atStartOfDay(), today.atTime(23, 59, 59));
+
+            // 2. 사용자 컨텍스트 구성
+            StringBuilder contextBuilder = new StringBuilder();
+            contextBuilder.append("=== 사용자 정보 ===\n");
+            contextBuilder.append("사용자명: ").append(resolveDisplayName(username)).append("\n"); // ✅ 이름 사용
+            contextBuilder.append("계정ID: ").append(username).append("\n"); // 내부 식별용(필요 없다면 제거)
+            contextBuilder.append("날짜: ").append(today.format(DateTimeFormatter.ofPattern("yyyy년 MM월 dd일"))).append("\n\n");
+
+            if (todayAlarms != null && !todayAlarms.isEmpty()) {
+                contextBuilder.append("=== 오늘 복용 약물 정보 ===\n");
+                for (Alarm alarm : todayAlarms) {
+                    String medicineName = safeName(alarm);
+                    String time = String.format("%02d:%02d", alarm.getAlarmTime().getHour(), alarm.getAlarmTime().getMinute());
+                    String status = alarm.isTaking() ? "복용 완료" : "미복용";
+                    contextBuilder.append(String.format("- %s: %s (%s)\n", time, medicineName, status));
+                }
+                contextBuilder.append("\n");
             } else {
-                formattedNames = String.join(", ", nameList.subList(0, nameList.size() - 1))
-                        + ", 그리고 " + nameList.get(nameList.size() - 1);
+                contextBuilder.append("=== 오늘 복용 약물 정보 ===\n");
+                contextBuilder.append("오늘 등록된 약물 일정이 없습니다.\n\n");
             }
 
-            return String.format("현재 등록된 약은 %s예요.", formattedNames);
-        }
+            // 3. 시스템 프롬프트 구성
+            String systemPrompt = """
+                당신은 시각장애인을 위한 복약 도우미 앱 '메디태그'의 친절한 AI 비서입니다.
+                
+                역할과 성격:
+                - 친근하고 따뜻한 친구처럼 대화합니다
+                - 사용자의 모든 질문에 자연스럽게 답변합니다
+                - 복약 관련이든 일상 대화든 자유롭게 대화합니다
+                - 이모지를 적절히 사용해서 친근하게 답변합니다
+                
+                답변 가이드:
+                1. 약 관련 질문 (예: "머리 아픈데 무슨 약 먹을까?", "타이레놀이 뭐야?")
+                   - 일반적인 약 정보와 조언을 제공합니다
+                   - 심각한 증상이면 병원 방문을 권유합니다
+                   - 사용자가 현재 복용 중인 약과의 상호작용을 고려합니다
+                
+                2. 복약 일정 관련 질문 (예: "오늘 약 먹었어?", "남은 약 뭐야?")
+                   - 위에 제공된 사용자 정보를 활용해서 답변합니다
+                   - 구체적이고 정확하게 알려줍니다
+                
+                3. 일상 대화 (예: "오늘 날씨 어때?", "기분 좋아")
+                   - 자연스럽게 공감하고 대화합니다
+                   - 필요하면 복약도 챙기라고 자연스럽게 언급합니다
+                
+                4. 건강 상담 (예: "머리가 아파", "소화가 안돼")
+                   - 공감하고 일반적인 대처법을 알려줍니다
+                   - 증상이 심하면 전문의 상담을 권유합니다
+                
+                주의사항:
+                - 명시적인 '등록/삭제/변경' 요청이 없으면 DB 변경을 제안하지 마세요
+                - 전문적인 의학적 진단은 하지 마세요
+                - 답변은 2-4문장 정도로 간결하게 작성하세요
+                - "복약 외 질문도 가능해요", "지금은~" 같은 메타적 멘트는 절대 하지 마세요
+                - 질문에 바로 답하세요
+                """;
 
-        if (message.matches(".*(다른|또).*아침약.*(있어|남았어|먹어야).*") ) {
-            List<Alarm> morningAlarms = alarms.stream()
-                    .filter(alarm -> alarm.getCalendar().getDate().isEqual(today))
-                    .filter(alarm -> alarm.getDosageTime().equals("아침"))
-                    .collect(Collectors.toList());
+            // 4. 전체 프롬프트 구성
+            String fullPrompt = contextBuilder.toString() +
+                    "=== 사용자 질문 ===\n" + userQuestion;
 
-            List<Alarm> pendingMorningAlarms = morningAlarms.stream()
-                    .filter(alarm -> !alarm.isTaking())
-                    .collect(Collectors.toList());
+            log.info("GPT 호출 - 사용자: {}, 질문: {}", username, userQuestion);
 
-            if (pendingMorningAlarms.isEmpty()) {
-                return "오늘 아침에 복용하실 약을 모두 복용하셨습니다! 잘하셨어요 😊";
-            }
+            // 5. OpenAI API 호출
+            return openAiService.sendMessageWithSystem(systemPrompt, fullPrompt);
 
-            String pendingMedicines = pendingMorningAlarms.stream()
-                    .map(alarm -> alarm.getCalendar().getMedicine().getName())
-                    .distinct()
-                    .collect(Collectors.joining(", "));
-
-            return String.format("오늘 아침에 아직 복용하지 않은 약은 다음과 같아요: %s입니다. 꼭 챙겨드세요! 🌿", pendingMedicines);
-        }
-
-        if (isNextMedicineRequest(message)) {
-            return getNextMedicineMessage(alarms);
-        }
-
-        if (isTodayInquiry(message)) {
-            return getTodayMedicineMessage(alarms, message);
-        }
-
-        StringBuilder promptBuilder = new StringBuilder();
-        promptBuilder.append("너는 친절한 복약 관리 도우미야.\n")
-                .append("아래는 사용자의 등록된 약 정보야:\n\n");
-
-        medicines.forEach(med -> promptBuilder
-                .append("약 이름: ").append(med.getName())
-                .append("\n특징: ").append(med.getCharacteristic())
-                .append("\n복용 기간: ").append(med.getStartDate()).append(" ~ ")
-                .append(med.getStartDate().plusDays(med.getDuration() - 1))
-                .append("\n처방 여부: ").append(med.getPrescribed() ? "처방약" : "비처방약")
-                .append("\n\n"));
-
-        promptBuilder.append("복용 알람 정보:\n");
-        alarms.forEach(alarm -> {
-            Calendar calendar = alarm.getCalendar();
-            promptBuilder.append("- ").append(calendar.getDate())
-                    .append(" / 약: ").append(calendar.getMedicine().getName())
-                    .append(" / 시간: ").append(alarm.getAlarmTime().toLocalTime())
-                    .append(" / 상태: ").append(alarm.isTaking() ? "복용 완료" : "복용 전")
-                    .append("\n");
-        });
-
-        promptBuilder.append("\n사용자 질문: ").append(message);
-
-        try {
-            String response = openAiService.sendMessageToOpenAi(promptBuilder.toString());
-            // ✅ JSON 파싱 대신 GPT의 응답을 그대로 반환
-            return response;
         } catch (Exception e) {
-            log.error("OpenAI 응답 파싱 실패: {}", e.getMessage());
-            return "답변 생성 중 오류가 발생했어요. 다시 한번 말씀해주시겠어요?";
+            log.warn("GPT 컨텍스트 호출 실패: {}", e.getMessage());
+            return null;
         }
     }
 
-    private boolean isNextMedicineRequest(String message) {
-        return message.matches(".*(다음|곧|지금|복용할 차례|언제).*");
-    }
-
-    private boolean isTodayInquiry(String message) {
-        return message.matches(".*(오늘|지금|몇시|언제|먹어야).*");
-    }
-
-    private String getNextMedicineMessage(List<Alarm> alarms) {
-        LocalDateTime now = LocalDateTime.now();
-        return alarms.stream()
-                .filter(alarm -> alarm.getAlarmTime().isAfter(now))
-                .sorted(Comparator.comparing(Alarm::getAlarmTime))
-                .findFirst()
-                .map(alarm -> String.format("다음 복용 약은 '%s'이고, 시간은 %s입니다. 복용 상태는 %s입니다.",
-                        alarm.getCalendar().getMedicine().getName(),
-                        alarm.getAlarmTime().toLocalTime(),
-                        alarm.isTaking() ? "이미 복용 완료" : "아직 복용 전"))
-                .orElse("오늘 더 이상 복용할 약이 없습니다. 편안히 쉬세요! 😊");
-    }
-
-    private String getTodayMedicineMessage(List<Alarm> alarms, String message) {
-        LocalDate today = LocalDate.now();
-        List<Alarm> todayAlarms = alarms.stream()
-                .filter(alarm -> alarm.getCalendar().getDate().isEqual(today))
-                .sorted(Comparator.comparing(Alarm::getAlarmTime))
-                .toList();
-
-        if (todayAlarms.isEmpty()) {
-            return "오늘은 복용해야 할 약이 없어요. 😊";
+    private String safeName(Alarm a) {
+        if (a.getCalendar() != null && a.getCalendar().getMedicine() != null) {
+            return a.getCalendar().getMedicine().getName();
         }
-
-        StringBuilder todayPrompt = new StringBuilder();
-        todayPrompt.append("오늘의 복약 일정입니다:\n");
-        todayAlarms.forEach(alarm -> todayPrompt
-                .append("- 약: ").append(alarm.getCalendar().getMedicine().getName())
-                .append(" / 시간: ").append(alarm.getAlarmTime().toLocalTime())
-                .append(" / 상태: ").append(alarm.isTaking() ? "복용 완료 ✅" : "복용 전 🔔")
-                .append("\n"));
-
-        todayPrompt.append("\n사용자 질문: ").append(message);
-
-        try {
-            return openAiService.sendMessageToOpenAi(todayPrompt.toString());
-        } catch (Exception e) {
-            log.error("OpenAI 응답 파싱 실패: {}", e.getMessage());
-            return "답변 생성 중 오류가 발생했어요. 다시 한번 말씀해주시겠어요?";
-        }
+        return "등록명 없음";
     }
 }
