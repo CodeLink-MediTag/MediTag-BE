@@ -107,12 +107,11 @@ public class MessageProcessorService {
                 return true;
             }
         }
-        return false;
-    }
 
     private String compact(String s) {
         return s == null ? "" : s.replaceAll("\\s+", "").toLowerCase();
     }
+}
 
     private String helloReply() {
         return "안녕하세요. 무엇을 도와드릴까요?\n- 오늘 먹을 약 뭐야\n- 오늘 아침 약 먹었어";

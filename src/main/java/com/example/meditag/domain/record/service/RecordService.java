@@ -89,4 +89,28 @@ public class RecordService {
                 .map(RecordMapper::toResponseDTO)
                 .collect(Collectors.toList());
     }
+
+    @Transactional
+    public void deleteRecording(String username, Long recordingId) {
+        var member = memberRepository.findByUsername(username)
+                .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_NOT_FOUND));
+
+        var recording = recordRepository.findByIdAndMember(recordingId, member)
+                .orElseThrow(() -> new CustomException(ErrorCode.RECORDING_NOT_FOUND)); // 필요시 RECORDING_NOT_FOUND로 분리
+
+        // 1) S3 객체 삭제 (URL 기반)
+        var fileUrl = recording.getRecordingFile();
+        try {
+            if (fileUrl != null && !fileUrl.isBlank()) {
+                s3Service.deleteByUrl(fileUrl); // ✅ URL로 삭제
+            }
+        } catch (Exception e) {
+            log.warn("S3 삭제 실패 recordingId={} url={} err={}", recordingId, fileUrl, e.getMessage());
+            // 정책 선택: 실패 시에도 DB 삭제를 진행할지, 롤백할지 결정
+            // throw new CustomException(ErrorCode.S3_DELETE_FAILED); // 롤백 원하면 사용
+        }
+
+        // 2) DB 삭제
+        recordRepository.delete(recording);
+    }
 }
